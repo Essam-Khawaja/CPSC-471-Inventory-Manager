@@ -12,7 +12,7 @@ export default async function HomePage() {
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar />
+      <Sidebar role={user.role} />
       <div className="flex flex-1 flex-col">
         <Topbar />
         <main className="flex-1 bg-slate-50 px-6 py-4">

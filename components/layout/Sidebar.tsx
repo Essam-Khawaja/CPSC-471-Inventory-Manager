@@ -3,36 +3,68 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import {
+  LayoutDashboard,
+  Warehouse,
+  ClipboardList,
+  Ship,
+  Boxes,
+  PackageSearch,
+  Truck,
+  Route as RouteIcon,
+  MapPin,
+  BarChart3,
+  Users,
+} from "lucide-react";
 
-const sections = [
+type Role = "ADMIN" | "STAFF" | "UNKNOWN";
+
+type SidebarProps = {
+  role: Role;
+};
+
+const allSections = [
   {
     label: "Operations",
     items: [
-      { href: "/", label: "Dashboard" },
-      { href: "/warehouses", label: "Warehouses" },
-      { href: "/inventory", label: "Inventory" },
-      { href: "/shipments", label: "Shipments" },
-      { href: "/containers", label: "Containers" },
-      { href: "/cargo", label: "Cargo Items" },
+      { href: "/", label: "Dashboard", icon: LayoutDashboard, roles: ["ADMIN", "STAFF"] },
+      { href: "/warehouses", label: "Warehouses", icon: Warehouse, roles: ["ADMIN"] },
+      { href: "/inventory", label: "Inventory", icon: ClipboardList, roles: ["ADMIN", "STAFF"] },
+      { href: "/shipments", label: "Shipments", icon: Ship, roles: ["ADMIN", "STAFF"] },
+      { href: "/containers", label: "Containers", icon: Boxes, roles: ["ADMIN", "STAFF"] },
+      { href: "/cargo", label: "Cargo Items", icon: PackageSearch, roles: ["ADMIN", "STAFF"] },
     ],
   },
   {
     label: "Master Data",
     items: [
-      { href: "/carriers", label: "Carriers" },
-      { href: "/routes", label: "Routes" },
-      { href: "/locations", label: "Locations" },
+      { href: "/carriers", label: "Carriers", icon: Truck, roles: ["ADMIN"] },
+      { href: "/routes", label: "Routes", icon: RouteIcon, roles: ["ADMIN"] },
+      { href: "/locations", label: "Locations", icon: MapPin, roles: ["ADMIN"] },
+    ],
+  },
+  {
+    label: "Administration",
+    items: [
+      { href: "/users", label: "Users", icon: Users, roles: ["ADMIN"] },
     ],
   },
   {
     label: "Analytics",
-    items: [{ href: "/reports", label: "Reports" }],
+    items: [{ href: "/reports", label: "Reports", icon: BarChart3, roles: ["ADMIN"] }],
   },
 ];
 
-export function Sidebar() {
+export function Sidebar({ role }: SidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+
+  const sections = allSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => item.roles.includes(role)),
+    }))
+    .filter((section) => section.items.length > 0);
 
   return (
     <aside
@@ -62,22 +94,19 @@ export function Sidebar() {
             <ul className="mt-1 space-y-0.5">
               {section.items.map((item) => {
                 const active = pathname === item.href;
+                const Icon = item.icon;
                 return (
                   <li key={item.href}>
                     <Link
                       href={item.href}
-                      className={`flex items-center rounded px-2 py-1.5 text-xs font-medium ${
+                      className={`flex items-center gap-2 rounded px-2 py-1.5 text-xs font-medium ${
                         active
                           ? "bg-sky-50 text-sky-800 ring-1 ring-sky-200"
                           : "text-slate-700 hover:bg-slate-50"
                       }`}
                     >
+                      <Icon className="h-4 w-4 flex-shrink-0" />
                       {!collapsed && <span>{item.label}</span>}
-                      {collapsed && (
-                        <span className="text-[11px]">
-                          {item.label.charAt(0)}
-                        </span>
-                      )}
                     </Link>
                   </li>
                 );
@@ -89,4 +118,5 @@ export function Sidebar() {
     </aside>
   );
 }
+
 
