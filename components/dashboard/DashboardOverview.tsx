@@ -1,10 +1,10 @@
 import Link from "next/link";
 
 const kpiCards = [
-  { label: "Shipments In Transit", value: 18, hint: "Across 4 carriers" },
-  { label: "Containers Utilized", value: "72%", hint: "36 of 50 active" },
-  { label: "Total Cargo Items", value: 420, hint: "All warehouses" },
-  { label: "Open Inventory Adjustments", value: 7, hint: "Pending approval" },
+  { label: "Shipments In Transit", value: 2, hint: "COUNT(*) WHERE status = 'IN_TRANSIT'" },
+  { label: "Total Containers", value: 2, hint: "COUNT(*) FROM containers" },
+  { label: "Total Cargo Items", value: 2, hint: "COUNT(*) FROM cargo_items" },
+  { label: "Total Warehouses", value: 1, hint: "COUNT(*) FROM warehouses" },
 ];
 
 export function DashboardOverview() {

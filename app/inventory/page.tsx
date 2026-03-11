@@ -1,26 +1,24 @@
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
+import { getPool } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
-const inventory = [
-  {
-    warehouse: "WH-01",
-    cargoCode: "CARGO-001",
-    description: "Electronics Pallet",
-    quantity: 10,
-    location: "Aisle 03 · Bin 12",
-    lastUpdatedBy: "Staff-01",
-  },
-  {
-    warehouse: "WH-01",
-    cargoCode: "CARGO-045",
-    description: "Textiles Roll",
-    quantity: 22,
-    location: "Aisle 07 · Bin 04",
-    lastUpdatedBy: "Staff-02",
-  },
-];
-
-export default function InventoryPage() {
+export default async function InventoryPage() {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect("/login");
+  }
+  const pool = getPool();
+  const result = await pool.query(
+    "SELECT cargo_id, warehouse_id, quantity_stored, last_updated FROM inventory_records ORDER BY warehouse_id, cargo_id"
+  );
+  const inventory = result.rows as {
+    cargo_id: number;
+    warehouse_id: number;
+    quantity_stored: number;
+    last_updated: Date;
+  }[];
   return (
     <div className="flex min-h-screen">
       <Sidebar />
@@ -53,49 +51,37 @@ export default function InventoryPage() {
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50">
                     <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                      Warehouse
+                      Cargo ID
                     </th>
                     <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                      Cargo Code
-                    </th>
-                    <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                      Description
+                      Warehouse ID
                     </th>
                     <th className="px-3 py-2 text-right font-semibold text-slate-600">
-                      Quantity
+                      Quantity Stored
                     </th>
                     <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                      Location
-                    </th>
-                    <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                      Last Updated By
+                      Last Updated
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {inventory.map((row) => (
                     <tr
-                      key={`${row.warehouse}-${row.cargoCode}`}
+                      key={`${row.warehouse_id}-${row.cargo_id}`}
                       className="border-b border-slate-100"
                     >
                       <td className="px-3 py-2 text-slate-800">
-                        {row.warehouse}
+                        {row.cargo_id}
                       </td>
                       <td className="px-3 py-2 text-slate-800">
-                        {row.cargoCode}
-                      </td>
-                      <td className="px-3 py-2 text-slate-700">
-                        {row.description}
+                        {row.warehouse_id}
                       </td>
                       <td className="px-3 py-2 text-right text-slate-700">
-                        {row.quantity}
+                        {row.quantity_stored}
                       </td>
                       <td className="px-3 py-2 text-slate-700">
-                        {row.location}
-                      </td>
-                      <td className="px-3 py-2 text-slate-700">
-                        {row.lastUpdatedBy}
-                      </td>
+  {new Date(row.last_updated).toLocaleString()}
+</td>
                     </tr>
                   ))}
                 </tbody>

@@ -1,8 +1,15 @@
-import { Sidebar } from "@/components/layout/Sidebar";
-import { Topbar } from "@/components/layout/Topbar";
-import { DashboardOverview } from "@/components/dashboard/DashboardOverview";
+import { Sidebar } from "../components/layout/Sidebar";
+import { Topbar } from "../components/layout/Topbar";
+import { DashboardOverview } from "../components/dashboard/DashboardOverview";
+import { getCurrentUser } from "../lib/auth";
+import { redirect } from "next/navigation";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect("/login");
+  }
+
   return (
     <div className="flex min-h-screen">
       <Sidebar />

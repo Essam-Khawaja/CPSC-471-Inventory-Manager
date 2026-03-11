@@ -1,26 +1,23 @@
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
+import { getPool } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
-const cargo = [
-  {
-    code: "CARGO-001",
-    description: "Consumer Electronics",
-    weight: "12,000 kg",
-    status: "In Warehouse",
-    warehouse: "WH-01",
-    container: "-",
-  },
-  {
-    code: "CARGO-078",
-    description: "Industrial Machinery",
-    weight: "24,500 kg",
-    status: "In Transit",
-    warehouse: "-",
-    container: "CONT-001",
-  },
-];
-
-export default function CargoPage() {
+export default async function CargoPage() {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect("/login");
+  }
+  const pool = getPool();
+  const result = await pool.query(
+    "SELECT cargo_id, cargo_type, weight FROM cargo_items ORDER BY cargo_id"
+  );
+  const cargo = result.rows as {
+    cargo_id: number;
+    cargo_type: string;
+    weight: number;
+  }[];
   return (
     <div className="flex min-h-screen">
       <Sidebar />
@@ -47,43 +44,27 @@ export default function CargoPage() {
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50">
                     <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                      Code
+                      Cargo ID
                     </th>
                     <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                      Description
+                      Cargo Type
                     </th>
                     <th className="px-3 py-2 text-right font-semibold text-slate-600">
-                      Weight
-                    </th>
-                    <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                      Status
-                    </th>
-                    <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                      Warehouse
-                    </th>
-                    <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                      Container
+                      Weight (kg)
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {cargo.map((item) => (
-                    <tr key={item.code} className="border-b border-slate-100">
-                      <td className="px-3 py-2 text-slate-800">{item.code}</td>
+                    <tr key={item.cargo_id} className="border-b border-slate-100">
+                      <td className="px-3 py-2 text-slate-800">
+                        {item.cargo_id}
+                      </td>
                       <td className="px-3 py-2 text-slate-700">
-                        {item.description}
+                        {item.cargo_type}
                       </td>
                       <td className="px-3 py-2 text-right text-slate-700">
                         {item.weight}
-                      </td>
-                      <td className="px-3 py-2 text-slate-700">
-                        {item.status}
-                      </td>
-                      <td className="px-3 py-2 text-slate-700">
-                        {item.warehouse}
-                      </td>
-                      <td className="px-3 py-2 text-slate-700">
-                        {item.container}
                       </td>
                     </tr>
                   ))}

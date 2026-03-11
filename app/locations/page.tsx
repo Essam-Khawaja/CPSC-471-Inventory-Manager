@@ -1,12 +1,26 @@
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
+import { getPool } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
-const locations = [
-  { name: "Calgary Main Warehouse", type: "Warehouse", city: "Calgary", country: "CA" },
-  { name: "Vancouver Port Terminal", type: "Port", city: "Vancouver", country: "CA" },
-];
-
-export default function LocationsPage() {
+export default async function LocationsPage() {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect("/login");
+  }
+  if (user.role !== "ADMIN") {
+    redirect("/");
+  }
+  const pool = getPool();
+  const result = await pool.query(
+    "SELECT location_id, location_name, location_type FROM locations ORDER BY location_id"
+  );
+  const locations = result.rows as {
+    location_id: number;
+    location_name: string;
+    location_type: string;
+  }[];
   return (
     <div className="flex min-h-screen">
       <Sidebar />
@@ -33,27 +47,27 @@ export default function LocationsPage() {
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50">
                     <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                      Name
+                      Location ID
                     </th>
                     <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                      Type
+                      Location Name
                     </th>
                     <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                      City
-                    </th>
-                    <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                      Country
+                      Location Type
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {locations.map((loc) => (
-                    <tr key={loc.name} className="border-b border-slate-100">
-                      <td className="px-3 py-2 text-slate-800">{loc.name}</td>
-                      <td className="px-3 py-2 text-slate-700">{loc.type}</td>
-                      <td className="px-3 py-2 text-slate-700">{loc.city}</td>
+                    <tr key={loc.location_id} className="border-b border-slate-100">
+                      <td className="px-3 py-2 text-slate-800">
+                        {loc.location_id}
+                      </td>
+                      <td className="px-3 py-2 text-slate-800">
+                        {loc.location_name}
+                      </td>
                       <td className="px-3 py-2 text-slate-700">
-                        {loc.country}
+                        {loc.location_type}
                       </td>
                     </tr>
                   ))}

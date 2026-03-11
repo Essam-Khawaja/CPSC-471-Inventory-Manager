@@ -1,8 +1,5 @@
 BEGIN;
 
-CREATE SCHEMA IF NOT EXISTS freight;
-SET search_path = freight, public;
-
 CREATE TABLE IF NOT EXISTS audit_logs (
   id BIGSERIAL PRIMARY KEY,
   user_id BIGINT NULL,
@@ -29,8 +26,8 @@ END;
 $$;
 
 CREATE OR REPLACE FUNCTION fn_update_inventory(
-  p_warehouse_id BIGINT,
   p_cargo_id BIGINT,
+  p_warehouse_id BIGINT,
   p_delta_quantity INTEGER,
   p_staff_user_id BIGINT
 ) RETURNS VOID
@@ -39,14 +36,13 @@ AS $$
 DECLARE
   v_new_qty INTEGER;
 BEGIN
-  INSERT INTO inventory_records(warehouse_id, cargo_id, quantity, last_updated_by_staff_user_id, last_updated_at)
-  VALUES (p_warehouse_id, p_cargo_id, GREATEST(p_delta_quantity, 0), p_staff_user_id, NOW())
-  ON CONFLICT (warehouse_id, cargo_id)
+  INSERT INTO inventory_records(cargo_id, warehouse_id, quantity_stored, last_updated)
+  VALUES (p_cargo_id, p_warehouse_id, GREATEST(p_delta_quantity, 0), NOW())
+  ON CONFLICT (cargo_id, warehouse_id)
   DO UPDATE SET
-    quantity = inventory_records.quantity + p_delta_quantity,
-    last_updated_by_staff_user_id = p_staff_user_id,
-    last_updated_at = NOW()
-  RETURNING quantity INTO v_new_qty;
+    quantity_stored = inventory_records.quantity_stored + p_delta_quantity,
+    last_updated = NOW()
+  RETURNING quantity_stored INTO v_new_qty;
 
   IF v_new_qty < 0 THEN
     RAISE EXCEPTION 'Inventory quantity cannot be negative (warehouse_id=%, cargo_id=%)', p_warehouse_id, p_cargo_id;
@@ -73,14 +69,14 @@ LANGUAGE plpgsql
 AS $$
 BEGIN
   PERFORM fn_audit_log(
-    NEW.last_updated_by_staff_user_id,
+    NULL,
     CASE WHEN TG_OP = 'INSERT' THEN 'INSERT' ELSE 'UPDATE' END,
     'inventory_records',
     NULL,
     JSONB_BUILD_OBJECT(
       'warehouse_id', NEW.warehouse_id,
       'cargo_id', NEW.cargo_id,
-      'quantity', NEW.quantity
+      'quantity_stored', NEW.quantity_stored
     )
   );
   RETURN NEW;

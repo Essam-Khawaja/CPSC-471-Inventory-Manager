@@ -1,26 +1,27 @@
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
+import { getPool } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
-const shipments = [
-  {
-    code: "SHP-2026-001",
-    status: "In Transit",
-    carrier: "AirFast",
-    route: "Calgary → Toronto",
-    containers: 4,
-    departure: "2026-03-10",
-  },
-  {
-    code: "SHP-2026-002",
-    status: "Planned",
-    carrier: "SeaBridge",
-    route: "Vancouver → Tokyo",
-    containers: 6,
-    departure: "2026-03-18",
-  },
-];
-
-export default function ShipmentsPage() {
+export default async function ShipmentsPage() {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect("/login");
+  }
+  const pool = getPool();
+  const result = await pool.query(
+    "SELECT shipment_id, status, shipment_date, carrier_id, route_id, origin_loc_id, destination_loc_id FROM shipments ORDER BY shipment_id"
+  );
+  const shipments = result.rows as {
+    shipment_id: number;
+    status: string;
+    shipment_date: Date | null;
+    carrier_id: number;
+    route_id: number;
+    origin_loc_id: number;
+    destination_loc_id: number;
+  }[];
   return (
     <div className="flex min-h-screen">
       <Sidebar />
@@ -47,37 +48,52 @@ export default function ShipmentsPage() {
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50">
                     <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                      Code
+                      Shipment ID
                     </th>
                     <th className="px-3 py-2 text-left font-semibold text-slate-600">
                       Status
                     </th>
                     <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                      Carrier
+                      Shipment Date
                     </th>
                     <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                      Route
+                      Carrier ID
                     </th>
                     <th className="px-3 py-2 text-right font-semibold text-slate-600">
-                      Containers
+                      Route ID
                     </th>
                     <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                      Departure
+                      Origin Location ID
+                    </th>
+                    <th className="px-3 py-2 text-left font-semibold text-slate-600">
+                      Destination Location ID
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {shipments.map((s) => (
-                    <tr key={s.code} className="border-b border-slate-100">
-                      <td className="px-3 py-2 text-slate-800">{s.code}</td>
+                    <tr
+                      key={s.shipment_id}
+                      className="border-b border-slate-100"
+                    >
+                      <td className="px-3 py-2 text-slate-800">
+                        {s.shipment_id}
+                      </td>
                       <td className="px-3 py-2 text-slate-800">{s.status}</td>
-                      <td className="px-3 py-2 text-slate-700">{s.carrier}</td>
-                      <td className="px-3 py-2 text-slate-700">{s.route}</td>
+                      <td className="px-3 py-2 text-slate-700">
+  {s.shipment_date ? new Date(s.shipment_date).toLocaleString() : "-"}
+</td>
+                      <td className="px-3 py-2 text-slate-700">
+                        {s.carrier_id}
+                      </td>
                       <td className="px-3 py-2 text-right text-slate-700">
-                        {s.containers}
+                        {s.route_id}
                       </td>
                       <td className="px-3 py-2 text-slate-700">
-                        {s.departure}
+                        {s.origin_loc_id}
+                      </td>
+                      <td className="px-3 py-2 text-slate-700">
+                        {s.destination_loc_id}
                       </td>
                     </tr>
                   ))}

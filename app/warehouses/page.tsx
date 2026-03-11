@@ -1,12 +1,28 @@
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
+import { getPool } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
-const warehouses = [
-  { code: "WH-01", name: "Calgary Main", admin: "Admin User", location: "Calgary, AB", capacityUsed: "64%" },
-  { code: "WH-02", name: "Vancouver Port", admin: "Admin User", location: "Vancouver, BC", capacityUsed: "82%" },
-];
-
-export default function WarehousesPage() {
+export default async function WarehousesPage() {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect("/login");
+  }
+  if (user.role !== "ADMIN") {
+    redirect("/");
+  }
+  const pool = getPool();
+  const result = await pool.query(
+    "SELECT warehouse_id, name, address, capacity, location_id FROM warehouses ORDER BY warehouse_id"
+  );
+  const warehouses = result.rows as {
+    warehouse_id: number;
+    name: string;
+    address: string;
+    capacity: number;
+    location_id: number;
+  }[];
   return (
     <div className="flex min-h-screen">
       <Sidebar />
@@ -33,33 +49,37 @@ export default function WarehousesPage() {
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50">
                     <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                      Code
+                      Warehouse ID
                     </th>
                     <th className="px-3 py-2 text-left font-semibold text-slate-600">
                       Name
                     </th>
                     <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                      Location
+                      Address
                     </th>
                     <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                      Admin
+                      Capacity
                     </th>
                     <th className="px-3 py-2 text-right font-semibold text-slate-600">
-                      Capacity Used
+                      Location ID
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {warehouses.map((wh) => (
-                    <tr key={wh.code} className="border-b border-slate-100">
-                      <td className="px-3 py-2 text-slate-800">{wh.code}</td>
+                    <tr key={wh.warehouse_id} className="border-b border-slate-100">
+                      <td className="px-3 py-2 text-slate-800">
+                        {wh.warehouse_id}
+                      </td>
                       <td className="px-3 py-2 text-slate-800">{wh.name}</td>
                       <td className="px-3 py-2 text-slate-700">
-                        {wh.location}
+                        {wh.address}
                       </td>
-                      <td className="px-3 py-2 text-slate-700">{wh.admin}</td>
                       <td className="px-3 py-2 text-right text-slate-700">
-                        {wh.capacityUsed}
+                        {wh.capacity}
+                      </td>
+                      <td className="px-3 py-2 text-right text-slate-700">
+                        {wh.location_id}
                       </td>
                     </tr>
                   ))}

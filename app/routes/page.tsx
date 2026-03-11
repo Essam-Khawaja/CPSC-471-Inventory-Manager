@@ -1,22 +1,25 @@
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
+import { getPool } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
-const routes = [
-  {
-    code: "RT-CA-TO",
-    origin: "Calgary, AB",
-    destination: "Toronto, ON",
-    days: 2,
-  },
-  {
-    code: "RT-VA-TK",
-    origin: "Vancouver, BC",
-    destination: "Tokyo, JP",
-    days: 9,
-  },
-];
-
-export default function RoutesPage() {
+export default async function RoutesPage() {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect("/login");
+  }
+  if (user.role !== "ADMIN") {
+    redirect("/");
+  }
+  const pool = getPool();
+  const result = await pool.query(
+    "SELECT route_id, estimated_time FROM routes ORDER BY route_id"
+  );
+  const routes = result.rows as {
+    route_id: number;
+    estimated_time: number;
+  }[];
   return (
     <div className="flex min-h-screen">
       <Sidebar />
@@ -43,29 +46,21 @@ export default function RoutesPage() {
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50">
                     <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                      Code
-                    </th>
-                    <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                      Origin
-                    </th>
-                    <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                      Destination
+                      Route ID
                     </th>
                     <th className="px-3 py-2 text-right font-semibold text-slate-600">
-                      Est. Days
+                      Estimated Time
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {routes.map((r) => (
-                    <tr key={r.code} className="border-b border-slate-100">
-                      <td className="px-3 py-2 text-slate-800">{r.code}</td>
-                      <td className="px-3 py-2 text-slate-700">{r.origin}</td>
-                      <td className="px-3 py-2 text-slate-700">
-                        {r.destination}
+                    <tr key={r.route_id} className="border-b border-slate-100">
+                      <td className="px-3 py-2 text-slate-800">
+                        {r.route_id}
                       </td>
                       <td className="px-3 py-2 text-right text-slate-700">
-                        {r.days}
+                        {r.estimated_time}
                       </td>
                     </tr>
                   ))}

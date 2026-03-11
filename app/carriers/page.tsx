@@ -1,12 +1,26 @@
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
+import { getPool } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
-const carriers = [
-  { name: "AirFast", contact: "ops@airfast.com", status: "Active" },
-  { name: "SeaBridge", contact: "support@seabridge.com", status: "Active" },
-];
-
-export default function CarriersPage() {
+export default async function CarriersPage() {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect("/login");
+  }
+  if (user.role !== "ADMIN") {
+    redirect("/");
+  }
+  const pool = getPool();
+  const result = await pool.query(
+    "SELECT carrier_id, name, carrier_type FROM carriers ORDER BY carrier_id"
+  );
+  const carriers = result.rows as {
+    carrier_id: number;
+    name: string;
+    carrier_type: string;
+  }[];
   return (
     <div className="flex min-h-screen">
       <Sidebar />
@@ -33,22 +47,26 @@ export default function CarriersPage() {
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50">
                     <th className="px-3 py-2 text-left font-semibold text-slate-600">
+                      Carrier ID
+                    </th>
+                    <th className="px-3 py-2 text-left font-semibold text-slate-600">
                       Name
                     </th>
                     <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                      Contact
-                    </th>
-                    <th className="px-3 py-2 text-left font-semibold text-slate-600">
-                      Status
+                      Carrier Type
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {carriers.map((c) => (
-                    <tr key={c.name} className="border-b border-slate-100">
+                    <tr key={c.carrier_id} className="border-b border-slate-100">
+                      <td className="px-3 py-2 text-slate-800">
+                        {c.carrier_id}
+                      </td>
                       <td className="px-3 py-2 text-slate-800">{c.name}</td>
-                      <td className="px-3 py-2 text-slate-700">{c.contact}</td>
-                      <td className="px-3 py-2 text-slate-700">{c.status}</td>
+                      <td className="px-3 py-2 text-slate-700">
+                        {c.carrier_type}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

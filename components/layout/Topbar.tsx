@@ -1,6 +1,31 @@
-import Image from "next/image";
+"use client";
+
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createSupabaseBrowser } from "@/lib/supabase-browser";
 
 export function Topbar() {
+  const [email, setEmail] = useState<string | null>(null);
+  const router = useRouter();
+  const supabase = createSupabaseBrowser();
+
+  useEffect(() => {
+    let isMounted = true;
+    supabase.auth.getUser().then(({ data }) => {
+      if (!isMounted) return;
+      setEmail(data.user?.email ?? null);
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [supabase]);
+
+  async function handleSignOut() {
+    await supabase.auth.signOut();
+    router.push("/login");
+  }
+
   return (
     <header className="flex h-14 items-center justify-between border-b border-slate-200 bg-white px-6">
       <div className="flex items-center gap-4">
@@ -14,22 +39,30 @@ export function Topbar() {
         </div>
       </div>
       <div className="flex items-center gap-4 text-xs text-slate-700">
-        <div className="flex flex-col items-end">
-          <span className="font-medium">Admin User</span>
-          <span className="text-[11px] text-slate-500">
-            Warehouse Admin · WH-01
-          </span>
-        </div>
-        <div className="h-8 w-8 overflow-hidden rounded-full bg-slate-200">
-          {/* <Image
-            src="https://avatar.iran.liara.run/public"
-            alt="User avatar"
-            width={32}
-            height={32}
-          /> */}
-        </div>
+        {email ? (
+          <>
+            <div className="flex flex-col items-end">
+              <span className="font-medium">{email}</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="rounded border border-slate-300 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Sign out
+            </button>
+          </>
+        ) : (
+          <Link
+            href="/login"
+            className="rounded border border-slate-300 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Sign in
+          </Link>
+        )}
       </div>
     </header>
   );
 }
+
 
