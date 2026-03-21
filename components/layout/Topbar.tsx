@@ -8,10 +8,15 @@ import { createSupabaseBrowser } from "@/lib/supabase-browser";
 export function Topbar() {
   const [email, setEmail] = useState<string | null>(null);
   const router = useRouter();
-  const supabase = createSupabaseBrowser();
 
   useEffect(() => {
     let isMounted = true;
+    const supabase = createSupabaseBrowser();
+    if (!supabase) {
+      setEmail(null);
+      return;
+    }
+
     supabase.auth.getUser().then(({ data }) => {
       if (!isMounted) return;
       setEmail(data.user?.email ?? null);
@@ -19,9 +24,14 @@ export function Topbar() {
     return () => {
       isMounted = false;
     };
-  }, [supabase]);
+  }, []);
 
   async function handleSignOut() {
+    const supabase = createSupabaseBrowser();
+    if (!supabase) {
+      router.push("/login");
+      return;
+    }
     await supabase.auth.signOut();
     router.push("/login");
   }

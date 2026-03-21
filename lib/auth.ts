@@ -9,7 +9,14 @@ export type CurrentUser = {
 };
 
 export async function getCurrentUser(): Promise<CurrentUser | null> {
-  const supabase = createSupabaseServer();
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) {
+    // Avoid crashing static/prerender builds when env vars aren't present.
+    return null;
+  }
+
+  const supabase = await createSupabaseServer();
   const {
     data: { user },
   } = await supabase.auth.getUser();
