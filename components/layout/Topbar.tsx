@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { createSupabaseBrowser } from "@/lib/supabase-browser";
 import { Menu } from "lucide-react";
+import { Breadcrumbs } from "./Breadcrumbs";
 
 type TopbarProps = {
   onMenuClick: () => void;
@@ -14,6 +15,8 @@ type TopbarProps = {
 export function Topbar({ onMenuClick }: TopbarProps) {
   const [email, setEmail] = useState<string | null>(null);
   const router = useRouter();
+  const pathname = usePathname();
+  const isHome = pathname === "/";
 
   // Fetch the current user's email from Supabase on mount
   useEffect(() => {
@@ -56,9 +59,13 @@ export function Topbar({ onMenuClick }: TopbarProps) {
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-neutral-500">
             Freight Cargo Control
           </div>
-          <div className="text-sm font-medium text-slate-900 dark:text-neutral-100">
-            Operational Overview
-          </div>
+          {isHome ? (
+            <div className="text-sm font-medium text-slate-900 dark:text-neutral-100">
+              Operational Overview
+            </div>
+          ) : (
+            <Breadcrumbs />
+          )}
         </div>
       </div>
 

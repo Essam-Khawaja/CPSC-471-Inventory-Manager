@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { getPool } from "./db";
 import { createSupabaseServer } from "./supabase-server";
 
@@ -10,11 +11,9 @@ export type CurrentUser = {
   warehouseIds: number[];
 };
 
-// Resolves the currently signed-in Supabase user to an application user.
-// Joins public.users with admins/warehouse_staff to determine role.
-// Also fetches the warehouse IDs the user is assigned to (via manages or warehouse_staff).
-// Returns null if not signed in or Supabase env vars are missing.
-export async function getCurrentUser(): Promise<CurrentUser | null> {
+// Wrapped in React cache() so multiple calls within the same server request
+// (e.g. layout + page) only hit Supabase Auth and the DB once.
+export const getCurrentUser = cache(async function getCurrentUser(): Promise<CurrentUser | null> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) {
@@ -93,4 +92,4 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     accountStatus: row.account_status,
     warehouseIds,
   };
-}
+});

@@ -1,14 +1,44 @@
 import Link from "next/link";
 import { getPool } from "@/lib/db";
+import { AlertBanner } from "./AlertBanner";
+
+type Role = "ADMIN" | "STAFF" | "UNKNOWN";
 
 type DashboardProps = {
   warehouseIds: number[];
   userName: string;
+  role: Role;
 };
 
-export async function DashboardOverview({ warehouseIds, userName }: DashboardProps) {
+export async function DashboardOverview({ warehouseIds, userName, role }: DashboardProps) {
   const pool = getPool();
   const hasWarehouses = warehouseIds.length > 0;
+
+  // Admin-only: global system totals (all warehouses, not scoped)
+  let globalShipments = 0, globalContainers = 0, globalCargo = 0, globalWarehouses = 0;
+  if (role === "ADMIN") {
+    const [gs, gc, gci, gw] = await Promise.all([
+      pool.query("SELECT COUNT(*) AS c FROM shipments"),
+      pool.query("SELECT COUNT(*) AS c FROM containers"),
+      pool.query("SELECT COUNT(*) AS c FROM cargo_items"),
+      pool.query("SELECT COUNT(*) AS c FROM warehouses"),
+    ]);
+    globalShipments = Number(gs.rows[0].c);
+    globalContainers = Number(gc.rows[0].c);
+    globalCargo = Number(gci.rows[0].c);
+    globalWarehouses = Number(gw.rows[0].c);
+  }
+
+  // Staff-only: warehouse name(s) for prominent display
+  let staffWarehouseNames: string[] = [];
+  if (role === "STAFF" && hasWarehouses) {
+    const whParams = warehouseIds.map((_, i) => `$${i + 1}`).join(",");
+    const wnRes = await pool.query(
+      `SELECT name FROM warehouses WHERE warehouse_id IN (${whParams}) ORDER BY name`,
+      warehouseIds
+    );
+    staffWarehouseNames = wnRes.rows.map((r: { name: string }) => r.name);
+  }
 
   // Build a reusable parameterised IN-clause for warehouse filtering
   const whParams = warehouseIds.map((_, i) => `$${i + 1}`).join(",");
@@ -141,13 +171,60 @@ export async function DashboardOverview({ warehouseIds, userName }: DashboardPro
         </p>
       </section>
 
+      <AlertBanner warehouseIds={warehouseIds} locationIds={locationIds} />
+
+      {/* Admin: Global System Summary */}
+      {role === "ADMIN" && (
+        <section className="rounded border border-sky-200 bg-sky-50/50 p-3 dark:border-sky-900 dark:bg-sky-950/30">
+          <h2 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-400">System-Wide Totals</h2>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {[
+              { label: "Total Shipments", value: globalShipments },
+              { label: "Total Containers", value: globalContainers },
+              { label: "Cargo Items", value: globalCargo },
+              { label: "All Warehouses", value: globalWarehouses },
+            ].map((g) => (
+              <div key={g.label} className="rounded bg-white px-2.5 py-2 dark:bg-neutral-900">
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-neutral-400">{g.label}</div>
+                <div className="mt-0.5 text-lg font-bold text-slate-900 dark:text-neutral-100">{g.value}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Staff: Quick Actions + Warehouse Name */}
+      {role === "STAFF" && hasWarehouses && (
+        <section className="rounded border border-emerald-200 bg-emerald-50/50 p-3 dark:border-emerald-900 dark:bg-emerald-950/30">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
+              Your Warehouse{staffWarehouseNames.length !== 1 ? "s" : ""}
+            </h2>
+            <span className="text-xs font-medium text-emerald-800 dark:text-emerald-300">
+              {staffWarehouseNames.join(", ")}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/inventory" className="rounded border border-emerald-300 bg-white px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:bg-neutral-900 dark:text-emerald-400 dark:hover:bg-neutral-800">
+              Adjust Inventory
+            </Link>
+            <Link href="/cargo" className="rounded border border-emerald-300 bg-white px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:bg-neutral-900 dark:text-emerald-400 dark:hover:bg-neutral-800">
+              New Cargo Item
+            </Link>
+            <Link href="/containers" className="rounded border border-emerald-300 bg-white px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:bg-neutral-900 dark:text-emerald-400 dark:hover:bg-neutral-800">
+              Move Cargo to Container
+            </Link>
+          </div>
+        </section>
+      )}
+
       {noData ? (
         <div className="rounded border border-amber-300 bg-amber-50 px-4 py-6 text-center text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-300">
           No warehouse assignments found for your account. Ask an admin to assign you to a warehouse.
         </div>
       ) : (
         <>
-          <section className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-6">
+          <section className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
             {kpis.map((k) => (
               <div key={k.label} className="rounded border border-slate-200 bg-white px-3 py-2.5 dark:border-neutral-800 dark:bg-neutral-900">
                 <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-neutral-400">{k.label}</div>
@@ -174,8 +251,8 @@ export async function DashboardOverview({ warehouseIds, userName }: DashboardPro
                           <span className="text-slate-700 dark:text-neutral-300">{c.name} <span className="text-slate-400">· {c.carrier_type}</span></span>
                           <span className="font-semibold text-slate-800 dark:text-neutral-200">{cnt}</span>
                         </div>
-                        <div className="mt-0.5 h-1.5 w-full rounded-full bg-slate-200 dark:bg-neutral-800">
-                          <div className="h-1.5 rounded-full bg-sky-500" style={{ width: `${pct}%` }} />
+                        <div className="mt-0.5 h-1.5 w-full rounded-full bg-slate-200 dark:bg-neutral-700">
+                          <div className="h-1.5 rounded-full bg-sky-500 dark:bg-sky-400" style={{ width: `${pct}%` }} />
                         </div>
                       </div>
                     );
@@ -249,7 +326,7 @@ export async function DashboardOverview({ warehouseIds, userName }: DashboardPro
                           <span className={`text-[10px] font-semibold ${labelColor}`}>{pct}% · {label}</span>
                         </span>
                       </div>
-                      <div className="mt-1 h-2 w-full rounded-full bg-slate-200 dark:bg-neutral-800">
+                      <div className="mt-1 h-2 w-full rounded-full bg-slate-200 dark:bg-neutral-700">
                         <div className={`h-2 rounded-full transition-all ${barColor}`} style={{ width: `${barWidth}%` }} />
                       </div>
                       <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-slate-400">
