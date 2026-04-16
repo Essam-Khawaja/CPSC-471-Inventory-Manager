@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "@/lib/theme-context";
+import { CreditsModal } from "./CreditsModal";
 import {
   LayoutDashboard,
   Warehouse,
@@ -21,6 +22,8 @@ import {
   Sun,
   Moon,
   X,
+  ChevronsLeft,
+  ChevronsRight,
 } from "lucide-react";
 
 type Role = "ADMIN" | "STAFF" | "UNKNOWN";
@@ -31,7 +34,6 @@ type SidebarProps = {
   onClose: () => void;
 };
 
-// Navigation sections with role-based visibility
 const allSections = [
   {
     label: "Operations",
@@ -74,13 +76,12 @@ const allSections = [
   },
 ];
 
-// Sidebar navigation with collapsible desktop mode and drawer on mobile
 export function Sidebar({ role, mobileOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const [creditsOpen, setCreditsOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
 
-  // Filter sections and items to only those the current role can see
   const sections = allSections
     .map((section) => ({
       ...section,
@@ -95,52 +96,66 @@ export function Sidebar({ role, mobileOpen, onClose }: SidebarProps) {
         transition-all duration-200 dark:border-neutral-800 dark:bg-neutral-900
         lg:sticky lg:top-0 lg:z-auto lg:h-screen
         ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
-        ${collapsed ? "w-16" : "w-64"}
+        ${collapsed ? "w-14" : "w-56"}
       `}
     >
-      {/* Header with title and collapse/close buttons */}
-      <div className="flex h-14 items-center justify-between border-b border-slate-200 px-3 dark:border-neutral-800">
-        <span className="text-xs font-semibold uppercase tracking-wide text-slate-800 dark:text-neutral-200">
-          {collapsed ? "FC" : "Freight Control"}
+      {/* Mobile close button */}
+      <div className="flex h-10 items-center justify-between px-2 lg:hidden">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-neutral-500">
+          Menu
         </span>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => setCollapsed((v) => !v)}
-            className="hidden rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 hover:bg-slate-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700 lg:inline-block"
-          >
-            {collapsed ? "\u203A" : "\u2039"}
-          </button>
-          <button
-            onClick={onClose}
-            className="rounded p-1 text-slate-600 hover:bg-slate-100 dark:text-neutral-400 dark:hover:bg-neutral-800 lg:hidden"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+        <button
+          onClick={onClose}
+          className="rounded p-1 text-slate-600 hover:bg-slate-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* Desktop collapse toggle */}
+      <div className="hidden h-10 items-center px-2 lg:flex">
+        <button
+          onClick={() => setCollapsed((v) => !v)}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className="flex items-center justify-center rounded p-1.5 text-slate-500 hover:bg-slate-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+        >
+          {collapsed ? (
+            <ChevronsRight className="h-4 w-4" />
+          ) : (
+            <ChevronsLeft className="h-4 w-4" />
+          )}
+        </button>
       </div>
 
       {/* Nav links */}
-      <nav className="flex-1 space-y-4 overflow-y-auto px-2 py-3 text-sm">
+      <nav className="flex-1 space-y-3 overflow-y-auto px-2 py-1 text-sm">
         {sections.map((section) => (
           <div key={section.label}>
             {!collapsed && (
-              <div className="px-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-neutral-500">
+              <div className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-neutral-500">
                 {section.label}
               </div>
             )}
-            <ul className="mt-1 space-y-0.5">
+            {collapsed && <div className="mx-auto my-1 h-px w-6 bg-slate-200 dark:bg-neutral-700" />}
+            <ul className="space-y-0.5">
               {section.items.map((item) => {
-                const active = pathname === item.href;
+                const active =
+                  item.href === "/"
+                    ? pathname === "/"
+                    : pathname === item.href || pathname.startsWith(`${item.href}/`);
                 const Icon = item.icon;
                 return (
                   <li key={item.href}>
                     <Link
                       href={item.href}
                       onClick={onClose}
-                      className={`flex items-center gap-2 rounded px-2 py-1.5 text-xs font-medium ${
+                      title={item.label}
+                      className={`flex items-center rounded px-2 py-1.5 text-xs font-medium transition-colors ${
+                        collapsed ? "justify-center" : "gap-2"
+                      } ${
                         active
-                          ? "bg-sky-50 text-sky-800 ring-1 ring-sky-200 dark:bg-sky-900/40 dark:text-sky-300 dark:ring-sky-700"
-                          : "text-slate-700 hover:bg-slate-50 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                          ? "bg-sky-50 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300"
+                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
                       }`}
                     >
                       <Icon className="h-4 w-4 flex-shrink-0" />
@@ -154,11 +169,26 @@ export function Sidebar({ role, mobileOpen, onClose }: SidebarProps) {
         ))}
       </nav>
 
-      {/* Dark mode toggle at the bottom of the sidebar */}
-      <div className="border-t border-slate-200 px-2 py-3 dark:border-neutral-800">
+      {/* Bottom actions */}
+      <div className="border-t border-slate-200 px-2 py-2 dark:border-neutral-800">
+        <button
+          type="button"
+          onClick={() => setCreditsOpen(true)}
+          title="Credits"
+          className={`mb-1 flex w-full items-center rounded px-2 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100 ${
+            collapsed ? "justify-center" : "gap-2"
+          }`}
+        >
+          <Users className="h-4 w-4 flex-shrink-0" />
+          {!collapsed && <span>Credits</span>}
+        </button>
+
         <button
           onClick={toggleTheme}
-          className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:text-neutral-300 dark:hover:bg-neutral-800"
+          title={theme === "dark" ? "Light Mode" : "Dark Mode"}
+          className={`flex w-full items-center rounded px-2 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100 ${
+            collapsed ? "justify-center" : "gap-2"
+          }`}
         >
           {theme === "dark" ? (
             <Sun className="h-4 w-4 flex-shrink-0" />
@@ -170,6 +200,11 @@ export function Sidebar({ role, mobileOpen, onClose }: SidebarProps) {
           )}
         </button>
       </div>
+
+      <CreditsModal
+        open={creditsOpen}
+        onClose={() => setCreditsOpen(false)}
+      />
     </aside>
   );
 }

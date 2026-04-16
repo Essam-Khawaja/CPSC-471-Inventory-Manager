@@ -118,12 +118,12 @@ export async function DashboardOverview({ warehouseIds, userName }: DashboardPro
   const totalShipments = inTransit + pending + delivered;
 
   const kpis = [
-    { label: "In Transit", value: inTransit, color: "text-sky-500" },
-    { label: "Pending", value: pending, color: "text-amber-500" },
-    { label: "Delivered", value: delivered, color: "text-emerald-500" },
-    { label: "Containers", value: containerCount, color: "text-violet-500" },
-    { label: "Cargo Types", value: cargoTypeCount, color: "text-rose-500" },
-    { label: "Warehouses", value: warehouseCount, color: "text-teal-500" },
+    { label: "In Transit", value: inTransit },
+    { label: "Pending", value: pending },
+    { label: "Delivered", value: delivered },
+    { label: "Containers", value: containerCount },
+    { label: "Cargo Types", value: cargoTypeCount },
+    { label: "Warehouses", value: warehouseCount },
   ];
 
   const maxCarrier = Math.max(1, ...topCarriers.map(c => Number(c.cnt)));
@@ -151,7 +151,7 @@ export async function DashboardOverview({ warehouseIds, userName }: DashboardPro
             {kpis.map((k) => (
               <div key={k.label} className="rounded border border-slate-200 bg-white px-3 py-2.5 dark:border-neutral-800 dark:bg-neutral-900">
                 <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-neutral-400">{k.label}</div>
-                <div className={`mt-1 text-2xl font-bold ${k.color}`}>{k.value}</div>
+                <div className="mt-1 text-2xl font-bold text-slate-900 dark:text-neutral-100">{k.value}</div>
               </div>
             ))}
           </section>
