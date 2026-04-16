@@ -1,0 +1,206 @@
+@startuml RelationalModel
+' Freight Cargo Inventory and Shipment Management System
+' Relational Model (Final Implementation)
+' PlantUML equivalent of docs/RM&EERD/RelationalModel.drawio
+
+skinparam linetype ortho
+skinparam class {
+  FontSize 12
+}
+
+title **Freight Cargo Inventory and Shipment Management System**\nRelational Model - Final Implementation (15 Relations)
+
+' ============================================================
+' PEOPLE GROUP
+' ============================================================
+
+class "User" as user <<table>> #F8CECC {
+  <u>user_id</u> : BIGSERIAL <<PK>>
+  name : TEXT NOT NULL
+  email : TEXT NOT NULL UNIQUE
+  password : TEXT NOT NULL
+  role_id : INTEGER NOT NULL
+  account_status : TEXT NOT NULL DEFAULT 'active'
+}
+
+class "Admin" as admin <<table>> #F8CECC {
+  <u>user_id</u> : BIGINT <<PK, FK -> User>>
+  admin_level : INTEGER NOT NULL DEFAULT 1
+}
+
+class "WarehouseStaff" as wstaff <<table>> #F8CECC {
+  <u>user_id</u> : BIGINT <<PK, FK -> User>>
+  job_title : TEXT NOT NULL
+  shift : TEXT NOT NULL
+  warehouse_id : BIGINT <<FK -> Warehouse>>
+}
+
+class "Manages" as manages <<table>> #F8CECC {
+  <u>admin_user_id</u> : BIGINT <<PK, FK -> Admin>>
+  <u>warehouse_id</u> : BIGINT <<PK, FK -> Warehouse>>
+}
+
+' ============================================================
+' PLACES GROUP
+' ============================================================
+
+class "Warehouse" as warehouse <<table>> #F8CECC {
+  <u>warehouse_id</u> : BIGSERIAL <<PK>>
+  name : TEXT NOT NULL
+  address : TEXT NOT NULL
+  capacity : INTEGER NOT NULL
+  location_id : BIGINT NOT NULL <<FK -> Location>>
+}
+
+class "Location" as location <<table>> #F8CECC {
+  <u>location_id</u> : BIGSERIAL <<PK>>
+  location_name : TEXT NOT NULL
+  location_type : TEXT NOT NULL
+}
+
+' ============================================================
+' CARGO AND STOCK GROUP
+' ============================================================
+
+class "CargoItem" as cargoitem <<table>> #F8CECC {
+  <u>cargo_id</u> : BIGSERIAL <<PK>>
+  cargo_type : TEXT NOT NULL
+  weight : NUMERIC NOT NULL
+}
+
+class "InventoryRecord" as invrec <<table>> #F8CECC {
+  <u>cargo_id</u> : BIGINT <<PK, FK -> CargoItem>>
+  <u>warehouse_id</u> : BIGINT <<PK, FK -> Warehouse>>
+  quantity_stored : INTEGER NOT NULL
+  last_updated : TIMESTAMPTZ NOT NULL
+}
+
+' ============================================================
+' MOVEMENT GROUP
+' ============================================================
+
+class "Carrier" as carrier <<table>> #F8CECC {
+  <u>carrier_id</u> : BIGSERIAL <<PK>>
+  name : TEXT NOT NULL
+  carrier_type : TEXT NOT NULL
+}
+
+class "Route" as route <<table>> #F8CECC {
+  <u>route_id</u> : BIGSERIAL <<PK>>
+  estimated_time : INTEGER NOT NULL
+}
+
+class "Shipment" as shipment <<table>> #F8CECC {
+  <u>shipment_id</u> : BIGSERIAL <<PK>>
+  shipment_date : DATE NOT NULL
+  status : TEXT NOT NULL
+  carrier_id : BIGINT NOT NULL <<FK -> Carrier>>
+  route_id : BIGINT NOT NULL <<FK -> Route>>
+  origin_loc_id : BIGINT NOT NULL <<FK -> Location>>
+  destination_loc_id : BIGINT NOT NULL <<FK -> Location>>
+}
+
+class "Container" as container <<table>> #F8CECC {
+  <u>container_id</u> : BIGSERIAL <<PK>>
+  container_type : TEXT NOT NULL
+  max_capacity : NUMERIC NOT NULL
+  shipment_id : BIGINT <<FK -> Shipment>>
+}
+
+class "ContainerCargo" as cc <<table>> #F8CECC {
+  <u>cargo_id</u> : BIGINT <<PK, FK -> CargoItem>>
+  <u>container_id</u> : BIGINT <<PK, FK -> Container>>
+}
+
+' ============================================================
+' SUPPORT GROUP (Added during implementation)
+' ============================================================
+
+class "AuditLog" as auditlog <<table>> #E1D5E7 {
+  <u>id</u> : BIGSERIAL <<PK>>
+  user_id : BIGINT <<FK -> User>>
+  action_type : TEXT NOT NULL
+  entity_type : TEXT NOT NULL
+  entity_id : TEXT
+  payload : JSONB
+  created_at : TIMESTAMPTZ NOT NULL
+}
+
+class "AdminAccessRequest" as aar <<table>> #E1D5E7 {
+  <u>request_id</u> : BIGSERIAL <<PK>>
+  user_id : BIGINT NOT NULL <<FK -> User>>
+  reason : TEXT NOT NULL
+  status : TEXT NOT NULL DEFAULT 'pending'
+  requested_at : TIMESTAMPTZ NOT NULL
+  resolved_at : TIMESTAMPTZ
+  resolved_by_user_id : BIGINT <<FK -> User>>
+}
+
+' ============================================================
+' FK ARROWS (solid = NOT NULL, dashed = nullable)
+' ============================================================
+
+' ISA specializations
+user "1" <-- "0..1" admin : user_id
+user "1" <-- "0..1" wstaff : user_id
+
+' WarehouseStaff -> Warehouse
+warehouse "1" <-- "0..N" wstaff : warehouse_id
+
+' Manages -> Admin + Warehouse
+admin "1" <-- "0..N" manages : admin_user_id
+warehouse "1" <-- "0..N" manages : warehouse_id
+
+' Warehouse -> Location
+location "1" <-- "0..N" warehouse : location_id
+
+' InventoryRecord -> CargoItem + Warehouse
+cargoitem "1" <-- "0..N" invrec : cargo_id
+warehouse "1" <-- "0..N" invrec : warehouse_id
+
+' Shipment -> Carrier, Route, Location (origin), Location (dest)
+carrier "1" <-- "0..N" shipment : carrier_id
+route "1" <-- "0..N" shipment : route_id
+location "1" <-- "0..N" shipment : origin_loc_id
+location "1" <-- "0..N" shipment : destination_loc_id
+
+' Container -> Shipment (nullable)
+shipment "1" <.. "0..N" container : shipment_id
+
+' ContainerCargo -> CargoItem + Container
+cargoitem "1" <-- "0..N" cc : cargo_id
+container "1" <-- "0..N" cc : container_id
+
+' AuditLog -> User (nullable)
+user "1" <.. "0..N" auditlog : user_id
+
+' AdminAccessRequest -> User (requester, NOT NULL)
+user "1" <-- "0..N" aar : user_id
+' AdminAccessRequest -> User (resolver, nullable)
+user "1" <.. "0..N" aar : resolved_by_user_id
+
+' ============================================================
+' LEGEND
+' ============================================================
+
+legend bottom left
+  |= Color |= Meaning |
+  | <#F8CECC> | Original relation (from proposal) |
+  | <#E1D5E7> | Added during implementation |
+  --
+  **Solid arrow** = NOT NULL foreign key
+  **Dashed arrow** = Nullable foreign key
+  --
+  **<u>Underlined</u>** columns form the primary key
+  --
+  **ISA:** User -> Admin, WarehouseStaff
+  (disjoint, total specialization)
+  --
+  **Weak Entity:** InventoryRecord
+  Composite PK (cargo_id, warehouse_id)
+  --
+  **15 relations total** organized in 5 groups:
+  People, Places, Cargo/Stock, Movement, Support
+end legend
+
+@enduml

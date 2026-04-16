@@ -7,3 +7,41 @@ body {
     "Segoe UI", sans-serif;
 }
 
+/* Only apply dark color-scheme when the app's own toggle adds .dark class.
+   Do NOT use @media (prefers-color-scheme) - that ignores the in-app toggle. */
+.dark {
+  color-scheme: dark;
+}
+
+/* Scrollbar styling for dark mode */
+.dark ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.dark ::-webkit-scrollbar-track {
+  background: rgb(23 23 23);
+  border-radius: 3px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: rgb(64 64 64);
+  border-radius: 3px;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgb(115 115 115);
+}
+
+/* Native select option styling for dark mode */
+.dark select option {
+  background-color: rgb(23 23 23);
+  color: rgb(229 229 229);
+}
+
+/* Checkbox styling for dark mode */
+.dark input[type="checkbox"] {
+  background-color: rgb(38 38 38);
+  border-color: rgb(64 64 64);
+}
+.dark input[type="checkbox"]:checked {
+  background-color: rgb(14 165 233);
+  border-color: rgb(14 165 233);
+}

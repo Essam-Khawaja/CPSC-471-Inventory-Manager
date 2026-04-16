@@ -1,0 +1,96 @@
+@startuml ArchitectureOverview
+title System Architecture Overview
+
+skinparam componentFontSize 13
+skinparam packageFontSize 14
+skinparam ArrowColor #1A5276
+skinparam ComponentBackgroundColor #D6EAF8
+skinparam ComponentBorderColor #2E86C1
+skinparam PackageBorderColor #2E86C1
+skinparam DatabaseBackgroundColor #D5F5E3
+skinparam DatabaseBorderColor #1E8449
+skinparam NoteBackgroundColor #FEF9E7
+skinparam NoteBorderColor #D4AC0D
+
+cloud "Browser" as client {
+  [React 19 Client Components] as react
+  [Supabase Browser Client\n(@supabase/ssr)] as supabrowser
+}
+
+package "Next.js 15 App Router" as nextjs {
+  package "Server Components" as sc {
+    [Dashboard (app/page.tsx)] as dash
+    [Entity Pages\n(warehouses, shipments,\ninventory, containers,\ncargo, carriers,\nroutes, locations)] as entities
+    [Reports Page] as reports
+    [Admin Pages\n(users, approvals)] as adminpages
+  }
+
+  package "API Routes" as api {
+    [POST /api/register] as regapi
+    [POST /api/admin/user] as useradminapi
+    [GET /api/db/health] as healthapi
+  }
+
+  package "Server Libraries" as libs {
+    [lib/auth.ts\ngetCurrentUser()] as authlib
+    [lib/db.ts\ngetPool()] as dblib
+    [lib/supabase-server.ts] as supaserver
+  }
+}
+
+database "Supabase PostgreSQL" as pgdb {
+  [auth.users\nauth.identities] as authschema
+  package "public schema" as pubschema {
+    [users, admins, warehouse_staff] as usertables
+    [locations, warehouses, manages] as placetables
+    [cargo_items, inventory_records] as cargotables
+    [carriers, routes, shipments,\ncontainers, container_cargo] as shiptables
+    [audit_logs,\nadmin_access_requests] as supporttables
+  }
+  package "Functions / Triggers" as fns {
+    [fn_audit_log()] as fnaudit
+    [fn_update_inventory()] as fninv
+    [trg_inventory_records_audit] as trg
+  }
+  package "Views" as views {
+    [view_shipment_summary] as vss
+    [view_warehouse_inventory] as vwi
+  }
+}
+
+cloud "Supabase Auth Service" as supaauth
+
+react --> supabrowser : signIn / signUp / signOut
+supabrowser --> supaauth : HTTPS (JWT)
+supaauth --> authschema : validate credentials
+
+sc --> authlib : getCurrentUser()
+authlib --> supaserver : getUser() from cookie
+supaserver --> supaauth : verify JWT
+authlib --> dblib : lookup user by email
+dblib --> pubschema : pg Pool (DATABASE_URL)
+
+sc --> dblib : SELECT queries
+api --> dblib : INSERT / UPDATE / DELETE
+entities --> dblib : parameterized SQL ($1, $2, ...)
+reports --> views : SELECT from views
+
+fninv --> fnaudit : calls
+trg --> fnaudit : calls
+cargotables --> trg : AFTER INSERT/UPDATE fires
+
+note right of nextjs
+  All data access uses
+  direct SQL via pg Pool.
+  No ORM. All queries
+  parameterized.
+end note
+
+note bottom of pgdb
+  Hosted on Supabase.
+  Schema in sql/ folder
+  (001 through 005).
+  Setup via npm run db:setup.
+end note
+
+@enduml

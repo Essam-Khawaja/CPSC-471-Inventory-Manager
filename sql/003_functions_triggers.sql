@@ -1,8 +1,11 @@
+-- Stored functions and triggers for inventory management and audit logging
+
 BEGIN;
 
+-- Audit log table: records all significant data changes for traceability
 CREATE TABLE IF NOT EXISTS audit_logs (
   id BIGSERIAL PRIMARY KEY,
-  user_id BIGINT NULL,
+  user_id BIGINT NULL REFERENCES users(user_id) ON DELETE SET NULL,
   action_type TEXT NOT NULL,
   entity_type TEXT NOT NULL,
   entity_id BIGINT NULL,
@@ -10,6 +13,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Inserts a row into audit_logs for tracking data changes
 CREATE OR REPLACE FUNCTION fn_audit_log(
   p_user_id BIGINT,
   p_action_type TEXT,
@@ -25,6 +29,8 @@ BEGIN
 END;
 $$;
 
+-- Updates inventory quantity using an insert-or-update approach.
+-- Raises an exception if the resulting quantity would be negative.
 CREATE OR REPLACE FUNCTION fn_update_inventory(
   p_cargo_id BIGINT,
   p_warehouse_id BIGINT,
@@ -63,6 +69,7 @@ BEGIN
 END;
 $$;
 
+-- Trigger function: automatically logs inventory changes to audit_logs
 CREATE OR REPLACE FUNCTION trg_inventory_records_audit()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -83,10 +90,10 @@ BEGIN
 END;
 $$;
 
+-- Attach trigger to inventory_records for automatic audit logging
 DROP TRIGGER IF EXISTS inventory_records_audit ON inventory_records;
 CREATE TRIGGER inventory_records_audit
 AFTER INSERT OR UPDATE ON inventory_records
 FOR EACH ROW EXECUTE FUNCTION trg_inventory_records_audit();
 
 COMMIT;
-

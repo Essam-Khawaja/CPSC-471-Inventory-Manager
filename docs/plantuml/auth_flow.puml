@@ -1,0 +1,64 @@
+@startuml AuthenticationFlow
+title Authentication and Authorization Flow
+
+skinparam sequenceFontSize 13
+skinparam participantFontSize 13
+skinparam ArrowColor #1A5276
+skinparam ParticipantBackgroundColor #D6EAF8
+skinparam ParticipantBorderColor #2E86C1
+skinparam NoteBackgroundColor #FEF9E7
+skinparam NoteBorderColor #D4AC0D
+
+actor "User (Browser)" as browser
+participant "Next.js\nApp Router" as nextjs
+participant "Supabase Auth\n(cookies / JWT)" as supa
+database "PostgreSQL\n(public schema)" as db
+
+== Registration Flow ==
+browser -> nextjs : POST /register (name, email, password)
+nextjs -> supa : supabase.auth.signUp(email, password)
+supa --> nextjs : Auth user created
+nextjs -> db : INSERT INTO users\n(name, email, role_id=2, status='pending_registration')
+nextjs -> db : INSERT INTO warehouse_staff\n(user_id, job_title='New User', shift='Day')
+nextjs --> browser : Redirect to /pending
+
+== Login Flow ==
+browser -> nextjs : POST /login (email, password)
+nextjs -> supa : supabase.auth.signInWithPassword()
+supa --> nextjs : Session cookie set
+nextjs -> db : getCurrentUser()\nSELECT u.*, CASE WHEN a IS NOT NULL...
+db --> nextjs : { userId, role, accountStatus, warehouseIds }
+alt account_status = 'pending_registration'
+  nextjs --> browser : Redirect to /pending
+else account_status = 'active'
+  nextjs --> browser : Redirect to / (Dashboard)
+end
+
+== Authenticated Page Request ==
+browser -> nextjs : GET /warehouses
+nextjs -> supa : supabase.auth.getUser()
+supa --> nextjs : Supabase user (email)
+nextjs -> db : getCurrentUser() - lookup by email\nLEFT JOIN admins, warehouse_staff
+db --> nextjs : CurrentUser object
+alt role = ADMIN
+  nextjs -> db : SELECT * FROM warehouses ...
+  db --> nextjs : rows
+  nextjs --> browser : Render page
+else role = STAFF (admin-only page)
+  nextjs --> browser : Redirect to /
+end
+
+== Staff Requests Admin Promotion ==
+browser -> nextjs : POST /staff/request-admin (reason)
+nextjs -> db : INSERT INTO admin_access_requests\n(user_id, reason, status='pending')
+nextjs --> browser : Success message
+
+== Admin Approves Promotion ==
+browser -> nextjs : POST /admin/approvals/admin-requests (approve)
+nextjs -> db : INSERT INTO admins (user_id, admin_level=1)
+nextjs -> db : DELETE FROM warehouse_staff WHERE user_id = ...
+nextjs -> db : UPDATE users SET role_id = 1 WHERE user_id = ...
+nextjs -> db : UPDATE admin_access_requests SET status = 'approved'
+nextjs --> browser : Staff promoted to Admin
+
+@enduml

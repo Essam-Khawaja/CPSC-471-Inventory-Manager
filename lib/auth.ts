@@ -6,13 +6,18 @@ export type CurrentUser = {
   name: string;
   email: string;
   role: "ADMIN" | "STAFF" | "UNKNOWN";
+  accountStatus: string;
+  warehouseIds: number[];
 };
 
+// Resolves the currently signed-in Supabase user to an application user.
+// Joins public.users with admins/warehouse_staff to determine role.
+// Also fetches the warehouse IDs the user is assigned to (via manages or warehouse_staff).
+// Returns null if not signed in or Supabase env vars are missing.
 export async function getCurrentUser(): Promise<CurrentUser | null> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) {
-    // Avoid crashing static/prerender builds when env vars aren't present.
     return null;
   }
 
@@ -26,11 +31,13 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   }
 
   const pool = getPool();
+
   const result = await pool.query(
     `
     SELECT
       u.user_id,
       u.name,
+      u.account_status,
       CASE
         WHEN a.user_id IS NOT NULL THEN 'ADMIN'
         WHEN ws.user_id IS NOT NULL THEN 'STAFF'
@@ -51,6 +58,8 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       name: user.email,
       email: user.email,
       role: "UNKNOWN",
+      accountStatus: "none",
+      warehouseIds: [],
     };
   }
 
@@ -58,14 +67,30 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     user_id: number;
     name: string;
     role: "ADMIN" | "STAFF" | "UNKNOWN";
+    account_status: string;
   };
+
+  let warehouseIds: number[] = [];
+  if (row.role === "ADMIN") {
+    const whRes = await pool.query(
+      "SELECT warehouse_id FROM manages WHERE admin_user_id = $1",
+      [row.user_id]
+    );
+    warehouseIds = whRes.rows.map((r: { warehouse_id: number }) => r.warehouse_id);
+  } else if (row.role === "STAFF") {
+    const whRes = await pool.query(
+      "SELECT warehouse_id FROM warehouse_staff WHERE user_id = $1 AND warehouse_id IS NOT NULL",
+      [row.user_id]
+    );
+    warehouseIds = whRes.rows.map((r: { warehouse_id: number }) => r.warehouse_id);
+  }
 
   return {
     userId: row.user_id,
     name: row.name,
     email: user.email,
     role: row.role,
+    accountStatus: row.account_status,
+    warehouseIds,
   };
 }
-
-

@@ -1,0 +1,43 @@
+@startuml UserLifecycle
+title User Lifecycle State Machine
+
+skinparam StateFontSize 13
+skinparam ArrowColor #1A5276
+skinparam StateBackgroundColor #D6EAF8
+skinparam StateBorderColor #2E86C1
+
+[*] --> PendingRegistration : Self-register\n(/register)
+
+PendingRegistration --> Active : Admin approves\n(/admin/approvals/users)
+PendingRegistration --> Rejected : Admin rejects
+
+Active --> Active : Normal usage
+
+state Active {
+  [*] --> Staff : Default role (role_id=2)
+  Staff --> Staff : Works at warehouse\n(warehouse_staff)
+  Staff --> RequestedAdmin : Submits request\n(/staff/request-admin)
+  RequestedAdmin --> Admin : Admin approves promotion\n(INSERT admins, DELETE warehouse_staff)
+  RequestedAdmin --> Staff : Admin rejects request
+  Admin --> Admin : Manages warehouses\n(manages table)
+  Admin --> Staff : Demoted by another admin\n(requires DEMOTION_KEY)
+}
+
+state "Admin-Created User" as AdminCreated
+[*] --> AdminCreated : Admin creates from /users\n(status = active immediately)
+AdminCreated --> Active
+
+note right of PendingRegistration
+  User can log in but
+  is redirected to /pending.
+  Cannot access any entity pages.
+end note
+
+note right of Active
+  role determined by JOINing:
+  admins table -> ADMIN
+  warehouse_staff table -> STAFF
+  neither -> UNKNOWN
+end note
+
+@enduml

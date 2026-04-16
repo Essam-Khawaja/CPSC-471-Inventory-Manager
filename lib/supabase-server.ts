@@ -1,6 +1,8 @@
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
+// Creates a Supabase client for server-side use (RSC, server actions).
+// Wires cookie access for session reading. Write ops are no-ops in RSC.
 export async function createSupabaseServer() {
   const cookieStore = await cookies();
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -14,10 +16,8 @@ export async function createSupabaseServer() {
       get(name: string) {
         return cookieStore.get(name)?.value;
       },
-      // For RSC we don't need to set/remove cookies here
       set() {},
       remove() {},
     },
   });
 }
-

@@ -1,13 +1,13 @@
 {
   "name": "project",
   "version": "1.0.0",
-  "main": "index.js",
   "directories": {
     "doc": "docs"
   },
   "scripts": {
     "dev": "next dev",
     "db:setup": "node scripts/db-setup.cjs",
+    "db:reseed": "node scripts/db-reseed.cjs",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

@@ -1,0 +1,61 @@
+@startuml InventoryAdjustmentFlow
+title Inventory Adjustment and Audit Trail Flow
+
+skinparam sequenceFontSize 13
+skinparam participantFontSize 13
+skinparam ArrowColor #1A5276
+skinparam ParticipantBackgroundColor #D6EAF8
+skinparam ParticipantBorderColor #2E86C1
+skinparam NoteBackgroundColor #FEF9E7
+skinparam NoteBorderColor #D4AC0D
+skinparam DatabaseBackgroundColor #D5F5E3
+skinparam DatabaseBorderColor #1E8449
+
+actor "Staff / Admin" as user
+participant "Inventory Page\n(/inventory)" as page
+participant "Server Action" as action
+database "PostgreSQL" as db
+participant "fn_update_inventory()" as fn
+participant "trg_inventory_records_audit" as trigger
+database "audit_logs" as audit
+
+== Inventory Adjustment (via stored function) ==
+user -> page : Click "Adjust Quantity"
+page -> page : Enter cargo_id, warehouse_id, delta
+user -> page : Submit form
+page -> action : Server action call
+action -> db : SELECT fn_update_inventory(\n  p_cargo_id, p_warehouse_id,\n  p_delta_quantity, p_staff_user_id)
+db -> fn : Execute function
+
+fn -> db : INSERT INTO inventory_records\nON CONFLICT (cargo_id, warehouse_id)\nDO UPDATE SET quantity_stored =\n  quantity_stored + p_delta_quantity
+alt Resulting quantity < 0
+  fn --> action : RAISE EXCEPTION\n'quantity cannot be negative'
+  action --> page : Error message displayed
+else Quantity valid
+  fn -> audit : fn_audit_log(\n  user_id, 'INVENTORY_ADJUST',\n  'inventory_records', payload)
+  audit --> fn : Logged
+  fn --> db : Return
+
+  note over db, trigger
+    The INSERT/UPDATE on inventory_records
+    also fires the row-level trigger
+  end note
+
+  db -> trigger : AFTER INSERT OR UPDATE
+  trigger -> audit : fn_audit_log(\n  NULL, 'INSERT'/'UPDATE',\n  'inventory_records', payload)
+
+  db --> action : Success
+  action --> page : Redirect with ?success=...
+  page --> user : Updated inventory displayed
+end
+
+== Direct CRUD (Admin creates/edits inventory record) ==
+user -> page : Create/Edit inventory record
+page -> action : Server action with raw SQL
+action -> db : INSERT/UPDATE inventory_records
+db -> trigger : AFTER INSERT OR UPDATE fires
+trigger -> audit : fn_audit_log() with NULL user_id
+db --> action : Success
+action --> page : Redirect with success message
+
+@enduml

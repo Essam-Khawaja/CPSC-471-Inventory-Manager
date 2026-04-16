@@ -1,21 +1,26 @@
-@startuml FreightCargo
+@startuml FreightCargoSchema
+title Freight Cargo Inventory and Shipment Management System\nComplete Database Schema Diagram (Final)
+
 skinparam classAttributeIconSize 0
 skinparam classFontSize 12
 skinparam classHeaderBackgroundColor #D6EAF8
 skinparam classBorderColor #2E86C1
 skinparam ArrowColor #1A5276
+skinparam NoteBackgroundColor #FEF9E7
+skinparam NoteBorderColor #D4AC0D
 skinparam Shadowing false
 
 top to bottom direction
 
-' ── Row 1: Users ──
+' Row 1: User hierarchy
 together {
   class User {
     + user_id : BIGSERIAL <<PK>>
     + name : TEXT
-    + email : TEXT
+    + email : TEXT <<UNIQUE>>
     + password : TEXT
     + role_id : INTEGER
+    + account_status : TEXT
   }
   class Admin {
     + user_id : BIGINT <<PK, FK>>
@@ -25,25 +30,37 @@ together {
     + user_id : BIGINT <<PK, FK>>
     + job_title : TEXT
     + shift : TEXT
+    + warehouse_id : BIGINT <<FK, nullable>>
   }
   class AuditLog {
     + id : BIGSERIAL <<PK>>
-    + user_id : BIGINT <<nullable>>
+    + user_id : BIGINT <<FK, nullable>>
     + action_type : TEXT
     + entity_type : TEXT
     + entity_id : BIGINT <<nullable>>
     + payload : JSONB
     + created_at : TIMESTAMPTZ
   }
+  class AdminAccessRequest {
+    + request_id : BIGSERIAL <<PK>>
+    + user_id : BIGINT <<FK>>
+    + reason : TEXT
+    + status : TEXT
+    + requested_at : TIMESTAMPTZ
+    + resolved_at : TIMESTAMPTZ <<nullable>>
+    + resolved_by_user_id : BIGINT <<FK, nullable>>
+  }
 }
 
-User <|-- Admin
-User <|-- WarehouseStaff
+User <|-- Admin : disjoint specialization
+User <|-- WarehouseStaff : disjoint specialization
 Admin -[hidden]right- WarehouseStaff
 WarehouseStaff -[hidden]right- AuditLog
-User ..> AuditLog
+AuditLog -[hidden]right- AdminAccessRequest
+User "1" ..> "0..*" AuditLog : logs (ON DELETE SET NULL)
+User "1" ..> "0..*" AdminAccessRequest : submits
 
-' ── Row 2: Manages, Location, Carrier, Route ──
+' Row 2: Manages, Location, Carrier, Route
 together {
   class Manages {
     + admin_user_id : BIGINT <<PK, FK>>
@@ -69,9 +86,10 @@ Manages -[hidden]right- Location
 Location -[hidden]right- Carrier
 Carrier -[hidden]right- Route
 
-Admin -down-> Manages
+Admin "1" -down-> "0..*" Manages : manages warehouses
+WarehouseStaff "0..*" -down-> "0..1" Manages
 
-' ── Row 3: Warehouse, Shipment ──
+' Row 3: Warehouse, Shipment
 together {
   class Warehouse {
     + warehouse_id : BIGSERIAL <<PK>>
@@ -93,13 +111,20 @@ together {
 
 Warehouse -[hidden]right- Shipment
 
-Manages  -down-> Warehouse
-Warehouse -down-> Location
-Carrier  -down-> Shipment
-Route    -down-> Shipment
-Location -down-> Shipment
+Manages "0..*" -down-> "1" Warehouse
+WarehouseStaff "0..*" -down-> "0..1" Warehouse : works at
+Warehouse "0..*" -down-> "1" Location : located at
+Carrier "1" -down-> "0..*" Shipment : handles
+Route "1" -down-> "0..*" Shipment : used by
+Location "1" -down-> "0..*" Shipment : origin / destination
 
-' ── Row 4: InventoryRecord, CargoItem, Container ──
+note right of Shipment
+  status values:
+  PENDING | IN_TRANSIT
+  DELIVERED | CANCELLED
+end note
+
+' Row 4: InventoryRecord, CargoItem, Container
 together {
   class InventoryRecord {
     + cargo_id : BIGINT <<PK, FK>>
@@ -116,24 +141,31 @@ together {
     + container_id : BIGSERIAL <<PK>>
     + container_type : TEXT
     + max_capacity : NUMERIC(12,2)
-    + shipment_id : BIGINT <<FK>>
+    + shipment_id : BIGINT <<FK, nullable>>
   }
 }
 
 InventoryRecord -[hidden]right- CargoItem
 CargoItem -[hidden]right- Container
 
-Warehouse -down-> InventoryRecord
-CargoItem -down-> InventoryRecord
-Shipment  -down-> Container
+Warehouse "1" -down-> "0..*" InventoryRecord : stores
+CargoItem "1" -down-> "0..*" InventoryRecord : tracked in
+Shipment "1" -down-> "0..*" Container : assigned to
 
-' ── Row 5: ContainerCargo ──
+note right of InventoryRecord
+  Weak entity: composite PK
+  (cargo_id, warehouse_id).
+  Managed by fn_update_inventory().
+  Trigger: trg_inventory_records_audit.
+end note
+
+' Row 5: ContainerCargo
 class ContainerCargo {
   + cargo_id : BIGINT <<PK, FK>>
   + container_id : BIGINT <<PK, FK>>
 }
 
-CargoItem  -down-> ContainerCargo
-Container  -down-> ContainerCargo
+CargoItem "1" -down-> "0..*" ContainerCargo : loaded in
+Container "1" -down-> "0..*" ContainerCargo : contains
 
 @enduml

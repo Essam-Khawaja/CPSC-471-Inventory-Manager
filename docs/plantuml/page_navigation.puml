@@ -1,0 +1,77 @@
+@startuml PageNavigation
+title Application Page Map and Role-Based Access
+
+skinparam componentFontSize 12
+skinparam packageFontSize 13
+skinparam ArrowColor #1A5276
+skinparam ComponentBackgroundColor #D6EAF8
+skinparam ComponentBorderColor #2E86C1
+skinparam PackageBorderColor #2E86C1
+
+package "Public (No Auth)" as pub {
+  [/login] as login
+  [/register] as register
+  [/pending] as pending
+}
+
+package "All Authenticated Users" as allauth {
+  [/ (Dashboard)] as dashboard
+  [/inventory] as inventory
+  [/shipments] as shipments
+  [/containers] as containers
+  [/cargo] as cargo
+}
+
+package "Admin Only" as adminonly {
+  [/warehouses] as warehouses
+  [/carriers] as carriers
+  [/routes] as routes
+  [/locations] as locations
+  [/reports] as reports
+  [/users] as users
+  [/admin/approvals/users] as approveusers
+  [/admin/approvals/admin-requests] as adminreqs
+}
+
+package "Staff Only" as staffonly {
+  [/staff/request-admin] as requestadmin
+}
+
+login -right-> dashboard : On successful login\n(active account)
+login --> pending : If account_status\n= pending_registration
+register --> pending : After registration
+
+note bottom of allauth
+  Both ADMIN and STAFF can
+  access these pages.
+  Staff sees data scoped
+  to their assigned warehouse.
+end note
+
+note bottom of adminonly
+  Redirected to / if
+  role is not ADMIN.
+  Full CRUD on all entities.
+end note
+
+note bottom of staffonly
+  Only visible to STAFF.
+  Submits admin promotion request
+  with reason (max 1000 chars).
+end note
+
+dashboard --> warehouses : Sidebar nav
+dashboard --> inventory
+dashboard --> shipments
+dashboard --> containers
+dashboard --> cargo
+dashboard --> carriers
+dashboard --> routes
+dashboard --> locations
+dashboard --> reports
+dashboard --> users
+dashboard --> approveusers
+dashboard --> adminreqs
+dashboard --> requestadmin
+
+@enduml

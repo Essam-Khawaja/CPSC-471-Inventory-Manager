@@ -1,0 +1,208 @@
+@startuml EERD
+' Freight Cargo Inventory and Shipment Management System
+' Enhanced Entity-Relationship Diagram (EERD) - Final Implementation
+' PlantUML equivalent of docs/RM&EERD/EERD.drawio
+
+skinparam linetype ortho
+skinparam class {
+  BackgroundColor #F8CECC
+  BorderColor #B85450
+  FontSize 14
+}
+skinparam object {
+  BackgroundColor #DAE8FC
+  BorderColor #6C8EBF
+  FontSize 12
+}
+
+title **Freight Cargo Inventory and Shipment Management System**\nEnhanced Entity-Relationship Diagram (EERD) - Final
+
+' ============================================================
+' ENTITIES
+' ============================================================
+
+entity "User" as user #F8CECC {
+  **__user_id__** : BIGSERIAL <<PK>>
+  --
+  name : TEXT
+  email : TEXT <<UNIQUE>>
+  password : TEXT
+  role_id : INTEGER
+  account_status : TEXT
+}
+
+entity "Admin" as admin #F8CECC {
+  **__user_id__** : BIGINT <<PK, FK>>
+  --
+  admin_level : INTEGER
+}
+
+entity "WarehouseStaff" as wstaff #F8CECC {
+  **__user_id__** : BIGINT <<PK, FK>>
+  --
+  job_title : TEXT
+  shift : TEXT
+  warehouse_id : BIGINT <<FK>>
+}
+
+entity "Warehouse" as warehouse #F8CECC {
+  **__warehouse_id__** : BIGSERIAL <<PK>>
+  --
+  name : TEXT
+  address : TEXT
+  capacity : INTEGER
+  location_id : BIGINT <<FK>>
+}
+
+entity "Location" as location #F8CECC {
+  **__location_id__** : BIGSERIAL <<PK>>
+  --
+  location_name : TEXT
+  location_type : TEXT
+}
+
+entity "CargoItem" as cargoitem #F8CECC {
+  **__cargo_id__** : BIGSERIAL <<PK>>
+  --
+  cargo_type : TEXT
+  weight : NUMERIC
+}
+
+entity "InventoryRecord\n(Weak Entity)" as invrec #F8CECC {
+  **__cargo_id__** : BIGINT <<PK, FK>>
+  **__warehouse_id__** : BIGINT <<PK, FK>>
+  --
+  quantity_stored : INTEGER
+  last_updated : TIMESTAMPTZ
+}
+
+entity "Carrier" as carrier #F8CECC {
+  **__carrier_id__** : BIGSERIAL <<PK>>
+  --
+  name : TEXT
+  carrier_type : TEXT
+}
+
+entity "Route" as route #F8CECC {
+  **__route_id__** : BIGSERIAL <<PK>>
+  --
+  estimated_time : INTEGER
+}
+
+entity "Shipment" as shipment #F8CECC {
+  **__shipment_id__** : BIGSERIAL <<PK>>
+  --
+  shipment_date : DATE
+  status : TEXT
+  carrier_id : BIGINT <<FK>>
+  route_id : BIGINT <<FK>>
+  origin_loc_id : BIGINT <<FK>>
+  destination_loc_id : BIGINT <<FK>>
+}
+
+entity "Container" as container #F8CECC {
+  **__container_id__** : BIGSERIAL <<PK>>
+  --
+  container_type : TEXT
+  max_capacity : NUMERIC
+  shipment_id : BIGINT <<FK>>
+}
+
+entity "ContainerCargo\n(Junction)" as containercargo #F8CECC {
+  **__cargo_id__** : BIGINT <<PK, FK>>
+  **__container_id__** : BIGINT <<PK, FK>>
+}
+
+entity "AuditLog\n(Added post-proposal)" as auditlog #E1D5E7 {
+  **__id__** : BIGSERIAL <<PK>>
+  --
+  user_id : BIGINT <<FK>>
+  action_type : TEXT
+  entity_type : TEXT
+  entity_id : TEXT
+  payload : JSONB
+  created_at : TIMESTAMPTZ
+}
+
+entity "AdminAccessRequest\n(Added post-proposal)" as aar #E1D5E7 {
+  **__request_id__** : BIGSERIAL <<PK>>
+  --
+  user_id : BIGINT <<FK>>
+  reason : TEXT
+  status : TEXT
+  requested_at : TIMESTAMPTZ
+  resolved_at : TIMESTAMPTZ
+  resolved_by_user_id : BIGINT <<FK>>
+}
+
+' ============================================================
+' ISA SPECIALIZATION (Disjoint, Total)
+' ============================================================
+
+user <|-- admin : ISA (disjoint)
+user <|-- wstaff : ISA (disjoint)
+
+' ============================================================
+' RELATIONSHIPS
+' ============================================================
+
+' Admin MANAGES Warehouse (M:N via manages table)
+admin "0..N" -- "1..1" warehouse : "MANAGES\n(via manages table)"
+
+' WarehouseStaff WORKS_AT Warehouse
+wstaff "1..1" -- "1..N" warehouse : "WORKS_AT\n(warehouse_id FK)"
+
+' Warehouse LOCATED_AT Location
+warehouse "1..1" -- "0..N" location : "LOCATED_AT"
+
+' Warehouse STORES InventoryRecord
+warehouse "1..N" -- "0..N" invrec : "STORES"
+
+' InventoryRecord TRACKS CargoItem
+invrec "1..1" -- "0..N" cargoitem : "TRACKS"
+
+' WarehouseStaff UPDATES InventoryRecord
+wstaff "0..N" -- "0..N" invrec : "UPDATES\n(via fn_update_inventory)"
+
+' Shipment HANDLED_BY Carrier
+shipment "1..1" -- "0..N" carrier : "HANDLED_BY"
+
+' Shipment USES Route
+shipment "1..1" -- "0..N" route : "USES"
+
+' Shipment DELIVERED TO/FROM Location (origin + destination)
+shipment "1..2" -- "0..N" location : "DELIVERED\nTO/FROM"
+
+' Shipment ASSIGNED Container
+shipment "1..N" -- "0..1" container : "ASSIGNED"
+
+' Container CONTAINS CargoItem (M:N via container_cargo)
+container "1..N" -- "0..1" cargoitem : "CONTAINS\n(via container_cargo)"
+
+' User -> AuditLog (logged actions)
+user "0..N" ..> auditlog : "logs actions"
+
+' WarehouseStaff -> AdminAccessRequest
+wstaff "0..N" --> aar : "REQUESTS"
+
+' Admin resolves AdminAccessRequest
+admin "0..N" ..> aar : "resolves"
+
+' ============================================================
+' LEGEND
+' ============================================================
+
+legend bottom left
+  |= Color |= Meaning |
+  | <#F8CECC> | Original entity (from proposal) |
+  | <#E1D5E7> | Added during implementation |
+  | <#DAE8FC> | Relationship diamond |
+  --
+  **ISA:** User specializes into Admin and WarehouseStaff
+  (disjoint, total participation)
+  --
+  **Weak Entity:** InventoryRecord identified by
+  composite key (cargo_id, warehouse_id)
+end legend
+
+@enduml

@@ -1,0 +1,85 @@
+@startuml DatabaseSetupSequence
+title Database Setup and Seeding Sequence (npm run db:setup)
+
+skinparam sequenceFontSize 13
+skinparam participantFontSize 12
+skinparam ArrowColor #1A5276
+skinparam ParticipantBackgroundColor #D6EAF8
+skinparam ParticipantBorderColor #2E86C1
+skinparam DatabaseBackgroundColor #D5F5E3
+skinparam DatabaseBorderColor #1E8449
+
+participant "Developer" as dev
+participant "scripts/db-setup.cjs" as script
+database "Supabase PostgreSQL" as db
+
+dev -> script : npm run db:setup
+script -> script : Load .env.local (dotenv)
+script -> script : Connect via DATABASE_URL
+
+== Phase 1: Schema ==
+script -> db : Execute 001_schema.sql
+note right
+  CREATE TABLE IF NOT EXISTS:
+  users, admins, warehouse_staff,
+  locations, warehouses, manages,
+  cargo_items, inventory_records,
+  carriers, routes, shipments,
+  containers, container_cargo
+  + indexes
+end note
+
+== Phase 2: Views ==
+script -> db : Execute 002_views.sql
+note right
+  CREATE OR REPLACE VIEW:
+  view_shipment_summary
+  view_warehouse_inventory
+end note
+
+== Phase 3: Functions and Triggers ==
+script -> db : Execute 003_functions_triggers.sql
+note right
+  CREATE TABLE audit_logs
+  CREATE FUNCTION fn_audit_log()
+  CREATE FUNCTION fn_update_inventory()
+  CREATE TRIGGER trg_inventory_records_audit
+end note
+
+== Phase 4: Seed Data ==
+script -> db : Execute 004_seed.sql
+note right
+  7 users, 63 locations,
+  12 warehouses, 22 carriers,
+  19 routes, 30 cargo items,
+  55 shipments, 77 containers,
+  43 container-cargo links,
+  45 inventory records,
+  Admin/Staff warehouse assignments
+end note
+
+== Phase 5: Auth Enhancements ==
+script -> db : Execute 005_auth_enhancements.sql
+note right
+  ALTER TABLE users ADD account_status
+  CREATE TABLE admin_access_requests
+  Set staff5 as pending_registration
+  Insert admin access requests for staff1/staff2
+end note
+
+== Phase 6: Supabase Auth User Seeding ==
+script -> db : SELECT extensions.crypt(password, gen_salt('bf'))
+note right: Compute bcrypt hash for shared password 'dev-only'
+loop For each of 7 seed emails
+  script -> db : Check if auth.users row exists
+  alt Does not exist
+    script -> db : INSERT INTO auth.users\n(id, email, encrypted_password, ...)
+    script -> db : INSERT INTO auth.identities\n(user_id, provider='email', ...)
+  else Already exists
+    script -> script : Skip
+  end
+end
+
+script --> dev : Setup complete.\nAll seed users have password: "dev-only"
+
+@enduml
