@@ -2,6 +2,7 @@ import { getPool } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 
 async function createShipment(formData: FormData) {
   "use server";
@@ -177,12 +178,7 @@ export default async function ShipmentsPage({ searchParams }: ShipmentsPageProps
                   <tr key={s.shipment_id} className="border-b border-slate-100 dark:border-neutral-800">
                     <td className="px-3 py-2 text-slate-800 dark:text-neutral-200">{s.shipment_id}</td>
                     <td className="px-3 py-2">
-                      <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold ${
-                        s.status === "DELIVERED" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300" :
-                        s.status === "IN_TRANSIT" ? "bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300" :
-                        s.status === "PENDING" ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300" :
-                        "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300"
-                      }`}>{s.status}</span>
+                      <StatusBadge status={s.status} />
                     </td>
                     <td className="px-3 py-2 text-slate-700 dark:text-neutral-300">{s.shipment_date ? new Date(s.shipment_date).toLocaleDateString() : "-"}</td>
                     <td className="px-3 py-2 text-slate-700 dark:text-neutral-300">{s.carrier_name}</td>

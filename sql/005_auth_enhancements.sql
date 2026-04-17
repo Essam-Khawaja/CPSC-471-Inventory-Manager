@@ -4,7 +4,8 @@ BEGIN;
 
 -- Account lifecycle: pending_registration -> active / rejected / disabled
 ALTER TABLE users
-  ADD COLUMN IF NOT EXISTS account_status TEXT NOT NULL DEFAULT 'active';
+  ADD COLUMN IF NOT EXISTS account_status TEXT NOT NULL DEFAULT 'active'
+  CHECK (account_status IN ('pending_registration', 'active', 'rejected', 'disabled'));
 
 -- Drop auth_user_id if it was added previously (we use email matching only)
 ALTER TABLE users DROP COLUMN IF EXISTS auth_user_id;
@@ -14,7 +15,7 @@ CREATE TABLE IF NOT EXISTS admin_access_requests (
   request_id BIGSERIAL PRIMARY KEY,
   user_id BIGINT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
   reason TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'pending',
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
   requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   resolved_at TIMESTAMPTZ NULL,
   resolved_by_user_id BIGINT NULL REFERENCES users(user_id) ON DELETE SET NULL

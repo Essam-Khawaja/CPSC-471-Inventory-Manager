@@ -52,14 +52,7 @@ export const getCurrentUser = cache(async function getCurrentUser(): Promise<Cur
   );
 
   if (result.rowCount === 0) {
-    return {
-      userId: -1,
-      name: user.email,
-      email: user.email,
-      role: "UNKNOWN",
-      accountStatus: "none",
-      warehouseIds: [],
-    };
+    return null;
   }
 
   const row = result.rows[0] as {

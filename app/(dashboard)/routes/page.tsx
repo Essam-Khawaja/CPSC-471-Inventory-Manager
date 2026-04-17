@@ -22,7 +22,7 @@ async function deleteRoute(formData: FormData) {
   if (!user || user.role !== "ADMIN") redirect("/login");
 
   const id = Number(String(formData.get("route_id") ?? "").trim());
-  if (!Number.isInteger(id)) return;
+  if (!Number.isInteger(id)) redirect(`/routes?error=${encodeURIComponent("Invalid route ID.")}`);
 
   const pool = getPool();
   try {

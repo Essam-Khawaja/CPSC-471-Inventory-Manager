@@ -10,7 +10,7 @@ async function approveUser(formData: FormData) {
   if (!current || current.role !== "ADMIN") redirect("/login");
 
   const userId = Number(formData.get("user_id"));
-  if (!Number.isInteger(userId)) return;
+  if (!Number.isInteger(userId)) redirect("/admin/approvals/users");
 
   const pool = getPool();
   await pool.query(
@@ -20,20 +20,33 @@ async function approveUser(formData: FormData) {
   revalidatePath("/admin/approvals/users");
 }
 
-// Reject a pending user registration
+// Reject a pending user registration and disable their Supabase auth account
 async function rejectUser(formData: FormData) {
   "use server";
   const current = await getCurrentUser();
   if (!current || current.role !== "ADMIN") redirect("/login");
 
   const userId = Number(formData.get("user_id"));
-  if (!Number.isInteger(userId)) return;
+  if (!Number.isInteger(userId)) redirect("/admin/approvals/users");
 
   const pool = getPool();
   await pool.query(
     "UPDATE users SET account_status = 'rejected' WHERE user_id = $1",
     [userId]
   );
+
+  const emailRes = await pool.query(
+    "SELECT email FROM users WHERE user_id = $1",
+    [userId]
+  );
+  if (emailRes.rowCount && emailRes.rowCount > 0) {
+    const email = emailRes.rows[0].email;
+    await pool.query(
+      "UPDATE auth.users SET banned_until = 'infinity' WHERE email = $1",
+      [email]
+    );
+  }
+
   revalidatePath("/admin/approvals/users");
 }
 

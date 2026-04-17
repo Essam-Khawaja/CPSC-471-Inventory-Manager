@@ -11,7 +11,7 @@ async function submitRequest(formData: FormData) {
   if (!user || user.role !== "STAFF") redirect("/");
 
   const reason = String(formData.get("reason") ?? "").trim().slice(0, 1000);
-  if (!reason) return;
+  if (!reason) redirect("/staff/request-admin?error=reason_required");
 
   const pool = getPool();
 
@@ -84,6 +84,12 @@ export default async function RequestAdminPage({ searchParams }: RequestAdminPag
         {params.error === "already_pending" && (
           <div className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-700 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
             You already have a pending request.
+          </div>
+        )}
+
+        {params.error === "reason_required" && (
+          <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-400">
+            A reason is required to submit your request.
           </div>
         )}
 

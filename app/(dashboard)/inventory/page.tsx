@@ -8,6 +8,7 @@ async function adjustInventory(formData: FormData) {
   "use server";
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  if (user.role !== "ADMIN" && user.role !== "STAFF") redirect("/");
 
   const cargoId = Number(String(formData.get("cargo_id") ?? "").trim());
   const warehouseId = Number(String(formData.get("warehouse_id") ?? "").trim());
@@ -34,6 +35,7 @@ async function moveCargoToContainer(formData: FormData) {
   "use server";
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  if (user.role !== "ADMIN" && user.role !== "STAFF") redirect("/");
 
   const cargoId = Number(String(formData.get("cargo_id") ?? "").trim());
   const containerId = Number(String(formData.get("container_id") ?? "").trim());
@@ -78,6 +80,7 @@ async function moveCargoToContainer(formData: FormData) {
   }
 
   revalidatePath("/inventory");
+  redirect("/inventory");
 }
 
 type InventoryPageProps = {

@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
   name TEXT NOT NULL,
   email TEXT NOT NULL UNIQUE,
   password TEXT NOT NULL,
-  role_id INTEGER NOT NULL
+  role_id INTEGER NOT NULL CHECK (role_id IN (1, 2))
 );
 
 -- Admins: specialization of users for admin-level users
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS warehouses (
   warehouse_id BIGSERIAL PRIMARY KEY,
   name TEXT NOT NULL,
   address TEXT NOT NULL,
-  capacity INTEGER NOT NULL,
+  capacity INTEGER NOT NULL CHECK (capacity > 0),
   location_id BIGINT NOT NULL REFERENCES locations(location_id) ON DELETE RESTRICT
 );
 
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS manages (
 CREATE TABLE IF NOT EXISTS cargo_items (
   cargo_id BIGSERIAL PRIMARY KEY,
   cargo_type TEXT NOT NULL,
-  weight NUMERIC(12,2) NOT NULL
+  weight NUMERIC(12,2) NOT NULL CHECK (weight > 0)
 );
 
 -- Inventory records: tracks quantity of each cargo item stored at each warehouse
@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS cargo_items (
 CREATE TABLE IF NOT EXISTS inventory_records (
   cargo_id BIGINT NOT NULL REFERENCES cargo_items(cargo_id) ON DELETE RESTRICT,
   warehouse_id BIGINT NOT NULL REFERENCES warehouses(warehouse_id) ON DELETE RESTRICT,
-  quantity_stored INTEGER NOT NULL,
+  quantity_stored INTEGER NOT NULL CHECK (quantity_stored >= 0),
   last_updated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (cargo_id, warehouse_id)
 );
@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS routes (
 CREATE TABLE IF NOT EXISTS shipments (
   shipment_id BIGSERIAL PRIMARY KEY,
   shipment_date DATE NOT NULL,
-  status TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('PENDING', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED')),
   carrier_id BIGINT NOT NULL REFERENCES carriers(carrier_id) ON DELETE RESTRICT,
   route_id BIGINT NOT NULL REFERENCES routes(route_id) ON DELETE RESTRICT,
   origin_loc_id BIGINT NOT NULL REFERENCES locations(location_id) ON DELETE RESTRICT,
@@ -93,7 +93,7 @@ CREATE TABLE IF NOT EXISTS shipments (
 CREATE TABLE IF NOT EXISTS containers (
   container_id BIGSERIAL PRIMARY KEY,
   container_type TEXT NOT NULL,
-  max_capacity NUMERIC(12,2) NOT NULL,
+  max_capacity NUMERIC(12,2) NOT NULL CHECK (max_capacity > 0),
   shipment_id BIGINT NULL REFERENCES shipments(shipment_id) ON DELETE SET NULL
 );
 

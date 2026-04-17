@@ -26,7 +26,7 @@ async function deleteCarrier(formData: FormData) {
   if (!user || user.role !== "ADMIN") redirect("/login");
 
   const id = Number(String(formData.get("carrier_id") ?? "").trim());
-  if (!Number.isInteger(id)) return;
+  if (!Number.isInteger(id)) redirect(`/carriers?error=${encodeURIComponent("Invalid carrier ID.")}`);
 
   const pool = getPool();
   try {

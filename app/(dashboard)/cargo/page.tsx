@@ -8,16 +8,17 @@ async function createCargo(formData: FormData) {
   "use server";
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  if (user.role !== "ADMIN" && user.role !== "STAFF") redirect("/");
 
   const cargoType = String(formData.get("cargo_type") ?? "").trim();
   const weightRaw = String(formData.get("weight") ?? "").trim();
   const warehouseIdRaw = String(formData.get("warehouse_id") ?? "").trim();
   const quantityRaw = String(formData.get("initial_quantity") ?? "").trim();
 
-  if (!cargoType || !weightRaw) return;
+  if (!cargoType || !weightRaw) redirect(`/cargo?error=${encodeURIComponent("Cargo type and weight are required.")}`);
 
   const weight = Number(weightRaw);
-  if (!Number.isFinite(weight) || weight <= 0) return;
+  if (!Number.isFinite(weight) || weight <= 0) redirect(`/cargo?error=${encodeURIComponent("Weight must be a positive number.")}`);
 
   const pool = getPool();
 
@@ -45,10 +46,17 @@ async function createCargo(formData: FormData) {
   revalidatePath("/cargo");
 }
 
+type CargoPageProps = {
+  searchParams: Promise<{ error?: string }>;
+};
+
 // Cargo items page: list all cargo and create new items
-export default async function CargoPage() {
+export default async function CargoPage({ searchParams }: CargoPageProps) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+
+  const params = await searchParams;
+  const error = (params.error ?? "").trim();
 
   const pool = getPool();
   const result = await pool.query("SELECT cargo_id, cargo_type, weight FROM cargo_items ORDER BY cargo_id LIMIT 500");
@@ -60,6 +68,10 @@ export default async function CargoPage() {
           <h1 className="text-base font-semibold text-slate-900 dark:text-neutral-100">Cargo Items</h1>
           <p className="mt-1 text-xs text-slate-600 dark:text-neutral-400">Master data for cargo items, types, and per-unit weights.</p>
         </header>
+
+        {error && (
+          <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-400">{error}</div>
+        )}
 
         {/* Create cargo form */}
         <div className="rounded border border-slate-200 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">

@@ -10,16 +10,15 @@ async function approveRequest(formData: FormData) {
   if (!current || current.role !== "ADMIN") redirect("/login");
 
   const requestId = Number(formData.get("request_id"));
-  if (!Number.isInteger(requestId)) return;
+  if (!Number.isInteger(requestId)) redirect("/admin/approvals/admin-requests");
 
   const pool = getPool();
 
-  // Look up the user_id from the request row (don't trust client-supplied value)
   const reqRow = await pool.query(
     `SELECT user_id FROM admin_access_requests WHERE request_id = $1 AND status = 'pending'`,
     [requestId]
   );
-  if ((reqRow.rowCount ?? 0) === 0) return;
+  if ((reqRow.rowCount ?? 0) === 0) redirect("/admin/approvals/admin-requests");
   const userId = reqRow.rows[0].user_id as number;
 
   // Mark the request as approved
@@ -49,7 +48,7 @@ async function rejectRequest(formData: FormData) {
   if (!current || current.role !== "ADMIN") redirect("/login");
 
   const requestId = Number(formData.get("request_id"));
-  if (!Number.isInteger(requestId)) return;
+  if (!Number.isInteger(requestId)) redirect("/admin/approvals/admin-requests");
 
   const pool = getPool();
   await pool.query(

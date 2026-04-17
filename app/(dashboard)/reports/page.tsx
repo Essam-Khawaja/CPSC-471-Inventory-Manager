@@ -1,6 +1,7 @@
 import { getPool } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { StatusBadge, statusColor } from "@/components/ui/StatusBadge";
 
 export default async function ReportsPage() {
   const user = await getCurrentUser();
@@ -130,7 +131,7 @@ export default async function ReportsPage() {
                         strokeDasharray={`${circ} 283`}
                         strokeLinecap="round"
                         transform="rotate(-90 50 50)"
-                        style={{ color: s.status === "DELIVERED" ? "#10b981" : s.status === "IN_TRANSIT" ? "#0ea5e9" : s.status === "PENDING" ? "#f59e0b" : "#ef4444" }}
+                        style={{ color: statusColor(s.status) }}
                       />
                       <text x="50" y="54" textAnchor="middle" className="fill-slate-800 dark:fill-neutral-100" style={{ fontSize: "24px", fontWeight: 700 }}>{pct}%</text>
                     </svg>
@@ -240,12 +241,7 @@ export default async function ReportsPage() {
                     <tr key={s.shipment_id} className="border-b border-slate-100 dark:border-neutral-800">
                       <td className="px-2 py-1.5 text-slate-800 dark:text-neutral-200">{s.shipment_id}</td>
                       <td className="px-2 py-1.5">
-                        <span className={`inline-block rounded px-1 py-0.5 text-[10px] font-semibold ${
-                          s.status === "DELIVERED" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300" :
-                          s.status === "IN_TRANSIT" ? "bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300" :
-                          s.status === "PENDING" ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300" :
-                          "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300"
-                        }`}>{s.status}</span>
+                        <StatusBadge status={s.status} />
                       </td>
                       <td className="px-2 py-1.5 text-slate-700 dark:text-neutral-300">{s.carrier_name}</td>
                       <td className="px-2 py-1.5 text-[10px] text-slate-500 dark:text-neutral-400">{s.origin} → {s.dest}</td>

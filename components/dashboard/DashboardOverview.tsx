@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getPool } from "@/lib/db";
 import { AlertBanner } from "./AlertBanner";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 
 type Role = "ADMIN" | "STAFF" | "UNKNOWN";
 
@@ -284,12 +285,7 @@ export async function DashboardOverview({ warehouseIds, userName, role }: Dashbo
                           <tr key={s.shipment_id} className="border-b border-slate-100 dark:border-neutral-800">
                             <td className="px-2 py-1.5 text-slate-800 dark:text-neutral-200">{s.shipment_id}</td>
                             <td className="px-2 py-1.5">
-                              <span className={`inline-block rounded px-1 py-0.5 text-[10px] font-semibold ${
-                                s.status === "DELIVERED" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300" :
-                                s.status === "IN_TRANSIT" ? "bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300" :
-                                s.status === "PENDING" ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300" :
-                                "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300"
-                              }`}>{s.status}</span>
+                              <StatusBadge status={s.status} />
                             </td>
                             <td className="px-2 py-1.5 text-slate-700 dark:text-neutral-300">{s.shipment_date ? new Date(s.shipment_date as string).toLocaleDateString() : "-"}</td>
                             <td className="px-2 py-1.5 text-slate-700 dark:text-neutral-300">{s.carrier_name}</td>

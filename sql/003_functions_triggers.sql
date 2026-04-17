@@ -54,18 +54,7 @@ BEGIN
     RAISE EXCEPTION 'Inventory quantity cannot be negative (warehouse_id=%, cargo_id=%)', p_warehouse_id, p_cargo_id;
   END IF;
 
-  PERFORM fn_audit_log(
-    p_staff_user_id,
-    'INVENTORY_ADJUST',
-    'inventory_records',
-    NULL,
-    JSONB_BUILD_OBJECT(
-      'warehouse_id', p_warehouse_id,
-      'cargo_id', p_cargo_id,
-      'delta_quantity', p_delta_quantity,
-      'new_quantity', v_new_qty
-    )
-  );
+  -- Audit logging is handled by the trg_inventory_records_audit trigger
 END;
 $$;
 
@@ -75,15 +64,17 @@ RETURNS TRIGGER
 LANGUAGE plpgsql
 AS $$
 BEGIN
-  PERFORM fn_audit_log(
+  INSERT INTO audit_logs(user_id, action_type, entity_type, entity_id, payload)
+  VALUES (
     NULL,
-    CASE WHEN TG_OP = 'INSERT' THEN 'INSERT' ELSE 'UPDATE' END,
+    CASE WHEN TG_OP = 'INSERT' THEN 'INVENTORY_INSERT' ELSE 'INVENTORY_UPDATE' END,
     'inventory_records',
     NULL,
     JSONB_BUILD_OBJECT(
       'warehouse_id', NEW.warehouse_id,
       'cargo_id', NEW.cargo_id,
-      'quantity_stored', NEW.quantity_stored
+      'quantity_stored', NEW.quantity_stored,
+      'old_quantity', CASE WHEN TG_OP = 'UPDATE' THEN OLD.quantity_stored ELSE NULL END
     )
   );
   RETURN NEW;

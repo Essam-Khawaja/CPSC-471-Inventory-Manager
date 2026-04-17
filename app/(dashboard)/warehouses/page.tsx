@@ -44,7 +44,7 @@ async function deleteWarehouse(formData: FormData) {
   if (!user || user.role !== "ADMIN") redirect("/login");
 
   const id = Number(String(formData.get("warehouse_id") ?? "").trim());
-  if (!Number.isInteger(id)) return;
+  if (!Number.isInteger(id)) redirect(`/warehouses?error=${encodeURIComponent("Invalid warehouse ID.")}`);
 
   const pool = getPool();
   try {

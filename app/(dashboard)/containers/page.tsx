@@ -8,6 +8,7 @@ async function assignContainerToShipment(formData: FormData) {
   "use server";
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  if (user.role !== "ADMIN" && user.role !== "STAFF") redirect("/");
 
   const containerId = Number(String(formData.get("container_id") ?? "").trim());
   const shipmentId = Number(String(formData.get("shipment_id") ?? "").trim());

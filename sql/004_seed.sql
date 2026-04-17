@@ -418,6 +418,9 @@ JOIN cargo_items ci ON ci.cargo_type = v.cargo_name
 JOIN containers  ct ON ct.container_type = v.ctype
 JOIN shipments   s  ON s.shipment_id = ct.shipment_id AND s.shipment_date = v.sdate;
 
+-- Disable audit trigger during seed to avoid 45 NULL-user_id audit rows
+ALTER TABLE inventory_records DISABLE TRIGGER inventory_records_audit;
+
 -- INVENTORY RECORDS
 INSERT INTO inventory_records(cargo_id, warehouse_id, quantity_stored, last_updated)
 SELECT ci.cargo_id, w.warehouse_id, v.qty, v.ts::TIMESTAMPTZ
@@ -473,5 +476,23 @@ JOIN warehouses  w  ON w.name = v.wh_name
 ON CONFLICT (cargo_id, warehouse_id) DO UPDATE SET
   quantity_stored = EXCLUDED.quantity_stored,
   last_updated    = EXCLUDED.last_updated;
+
+-- Re-enable audit trigger for runtime use
+ALTER TABLE inventory_records ENABLE TRIGGER inventory_records_audit;
+
+-- AUDIT LOGS: seed with random user_ids (1-6) matching each inventory record
+INSERT INTO audit_logs(user_id, action_type, entity_type, entity_id, payload, created_at)
+SELECT
+  1 + floor(random() * 6)::INT,
+  'INSERT',
+  'inventory_records',
+  NULL,
+  JSONB_BUILD_OBJECT(
+    'warehouse_id', ir.warehouse_id,
+    'cargo_id', ir.cargo_id,
+    'quantity_stored', ir.quantity_stored
+  ),
+  ir.last_updated
+FROM inventory_records ir;
 
 COMMIT;

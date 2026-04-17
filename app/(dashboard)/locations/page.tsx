@@ -26,7 +26,7 @@ async function deleteLocation(formData: FormData) {
   if (!user || user.role !== "ADMIN") redirect("/login");
 
   const id = Number(String(formData.get("location_id") ?? "").trim());
-  if (!Number.isInteger(id)) return;
+  if (!Number.isInteger(id)) redirect(`/locations?error=${encodeURIComponent("Invalid location ID.")}`);
 
   const pool = getPool();
   try {

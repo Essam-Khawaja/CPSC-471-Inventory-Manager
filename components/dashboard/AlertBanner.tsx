@@ -6,7 +6,7 @@ type AlertBannerProps = {
   locationIds: number[];
 };
 
-type OvercapRow = { name: string; capacity: number; used: string | number };
+type OvercapRow = { warehouse_id: number; name: string; capacity: number; used: string | number };
 
 export async function AlertBanner({ warehouseIds, locationIds }: AlertBannerProps) {
   if (warehouseIds.length === 0) return null;
@@ -16,7 +16,7 @@ export async function AlertBanner({ warehouseIds, locationIds }: AlertBannerProp
 
   // Warehouses above 90% capacity
   const overcapRes = await pool.query(
-    `SELECT w.name, w.capacity, COALESCE(v.total_weight, 0) AS used
+    `SELECT w.warehouse_id, w.name, w.capacity, COALESCE(v.total_weight, 0) AS used
      FROM warehouses w
      LEFT JOIN view_warehouse_inventory v ON v.warehouse_id = w.warehouse_id
      WHERE w.warehouse_id IN (${whParams})
@@ -47,7 +47,7 @@ export async function AlertBanner({ warehouseIds, locationIds }: AlertBannerProp
         const pct = w.capacity > 0 ? Math.round((Number(w.used) / w.capacity) * 100) : 0;
         return (
           <div
-            key={w.name}
+            key={w.warehouse_id}
             className="flex items-center gap-2 rounded border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300"
           >
             <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />

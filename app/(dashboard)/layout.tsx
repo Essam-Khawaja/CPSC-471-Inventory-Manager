@@ -9,7 +9,7 @@ export default async function DashboardLayout({
 }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (user.accountStatus !== "active" && user.accountStatus !== "none") {
+  if (user.accountStatus !== "active") {
     redirect("/pending");
   }
 
